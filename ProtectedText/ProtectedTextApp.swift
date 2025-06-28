@@ -10,22 +10,29 @@ import SwiftData
 
 @main
 struct ProtectedTextApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+    var sharedModelContainer: ModelContainer
+    @StateObject private var sitesManager: SitesManager
+    @StateObject private var sitesViewModel = SitesViewModel()
+    
+    init() {
+        let container: ModelContainer
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let schema = Schema([Site.self])
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            container = try ModelContainer(for: schema, migrationPlan: SiteMigrationPlan.self, configurations: [config])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }()
+        
+        self.sharedModelContainer = container
+        _sitesManager = StateObject(wrappedValue: SitesManager(modelContext: container.mainContext))
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(sitesViewModel)
+                .environmentObject(sitesManager)
         }
         .modelContainer(sharedModelContainer)
     }
