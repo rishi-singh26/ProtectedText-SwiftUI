@@ -71,17 +71,16 @@ struct AddSiteView: View {
                 
                 if let siteData = controller.siteData, siteData.isNew {
                     Section {
-                        Text("**Great! This site does not exist**.\n\nIn order to take ownership, of this site, create a password.\nIf you forget this password, you will loose access to this site.")
+                        Text("**Great! This site does not exist**.\n\nIn order to create this site, enter a password.\nIf you forget this password, you will loose access to this site.")
                         PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .plain)
                         PasswordField(password: $controller.repeatPassword, placeholder: "Repeat Password", textFieldStyle: .plain)
                         ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
                         HStack {
                             Button("Generate Password", action: controller.generateRandomPass)
                             Spacer()
-                            Button("Create Site") {
-                                
-                            }
-                            .buttonStyle(.borderedProminent)
+                            Button("Create Site", action: handleCreateSite)
+                                .disabled(controller.disableCreateSiteBtn)
+                                .buttonStyle(.borderedProminent)
                         }
                     }
                     
@@ -173,7 +172,7 @@ struct AddSiteView: View {
                 if let siteData = controller.siteData, siteData.isNew {
                     MacCustomSection {
                         VStack(alignment: .leading) {
-                            Text("**Great! This site does not exist**.\n\nIn order to take ownership, of this site, create a password.\nIf you forget this password, you will loose access to this site.")
+                            Text("**Great! This site does not exist**.\n\nIn order to create this site, enter a password.\nIf you forget this password, you will loose access to this site.")
                             PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .roundedBorder)
                             PasswordField(password: $controller.repeatPassword, placeholder: "Repeat Password", textFieldStyle: .roundedBorder)
                             ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
@@ -181,10 +180,9 @@ struct AddSiteView: View {
                             HStack {
                                 Spacer()
                                 Button("Generate Password", action: controller.generateRandomPass)
-                                Button("Create Site") {
-                                    
-                                }
-                                .buttonStyle(.borderedProminent)
+                                Button("Create Site", action: handleCreateSite)
+                                    .disabled(controller.disableCreateSiteBtn)
+                                    .buttonStyle(.borderedProminent)
                             }
                         }
                     }
@@ -225,17 +223,18 @@ struct AddSiteView: View {
     private func handleAddSite() {
         guard let siteData = controller.siteData else { return }
         do {
+            guard try isSiteUnique() else { return }
+            
             let newSite = Site(
                 siteURL: controller.siteURL,
                 new: siteData.isNew,
                 currentDBVersion: siteData.currentDBVersion,
                 expectedDBVersion: siteData.expectedDBVersion,
                 siteContent: siteData.eContent,
-                createdAt: Date.now
             )
             
             // decrypt and extract data
-            let tabs = try newSite.decrypt(with: controller.password)
+            let tabs: [String] = try newSite.decrypt(with: controller.password)
             // save site to swiftdata
             try sitesManager.createSite(newSite, with: tabs)
             // save password to keychain
@@ -248,6 +247,75 @@ struct AddSiteView: View {
             dismiss()
         } catch {
             controller.errorText = error.localizedDescription
+        }
+    }
+    
+    private func isSiteUnique() throws -> Bool {
+        let sitesWithSameURL = try sitesManager.getSites(withId: controller.siteURL)
+        guard sitesWithSameURL.isEmpty else {
+            controller.errorText = sitesWithSameURL.first?.archived == true
+                ? "This site has already been added and is present in the archived sites section."
+                : "This site has already been added."
+            return false
+        }
+        return true
+    }
+    
+    private func handleCreateSite() {
+        Task {
+            guard let siteData = controller.siteData else { return }
+            do {
+                let newSite = Site(
+                    siteURL: controller.siteURL,
+                    new: siteData.isNew,
+                    currentDBVersion: siteData.currentDBVersion,
+                    expectedDBVersion: siteData.expectedDBVersion,
+                    siteContent: siteData.eContent,
+                )
+                
+                // Create site by adding some content
+                let creationContent = "This text has been added so you can take ownership of this newly created site, you can remove this text now."
+                // Save the data into www.protectedtext.com server
+                let result = try await newSite.save(with: controller.password, and: [creationContent])
+                if (result.status.lowercased() == "success") {
+                    // save site to swiftdata
+                    try sitesManager.createSite(newSite, with: [creationContent])
+                    // save password to keychain
+                    if controller.shouldSavePass {
+                        var updatedPasswords = sitesManager.passwords
+                        updatedPasswords[controller.siteURL] = controller.password
+                        try KeychainManager.saveKeychainData(updatedPasswords)
+                        sitesManager.passwords = updatedPasswords
+                    }
+                    dismiss()
+                }
+                else if result.message != nil { // special messages from server
+                    controller.errorText = result.message
+                }
+                else if let expectedDBVersion = result.expectedDBVersion { // special messages from server
+                    if (siteData.expectedDBVersion < expectedDBVersion) {
+                        controller.siteData?.expectedDBVersion = expectedDBVersion;
+                        handleCreateSite() // retry with newer version
+                    }
+                }
+                else {
+//                    $("#dialog-site-modified").dialog({ // text was changed in the meantime, show dialog
+//                        dialogClass : "no-close active-dialog",
+//                        modal : true,
+//                        minWidth: 345,
+//                        buttons : {
+//                            "OK" : function() {
+//                                $(this).dialog("close");
+//                            }
+//                        },
+//                        close: function( event, ui ) {
+//                            focusActiveTextarea();
+//                        }
+//                    });
+                }
+            } catch {
+                controller.errorText = error.localizedDescription
+            }
         }
     }
 }

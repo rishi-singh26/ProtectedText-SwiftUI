@@ -8,8 +8,8 @@
 import Foundation
 
 struct SiteData: Codable {
-    let eContent: String
-    let isNew: Bool
-    let currentDBVersion: Int
-    let expectedDBVersion: Int
+    var eContent: String
+    var isNew: Bool
+    var currentDBVersion: Int
+    var expectedDBVersion: Int
 }

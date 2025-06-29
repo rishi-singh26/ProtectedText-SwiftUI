@@ -18,8 +18,9 @@ class AddSiteViewModel: ObservableObject {
     @Published var password: String = ""
     @Published var repeatPassword: String = ""
     @Published var shouldSavePass: Bool = true
-    var isPasswordValid: Bool {
-        password != "" && password.count >= 6
+    
+    var disableCreateSiteBtn: Bool {
+        password.isEmpty || password != repeatPassword || password.count < 6
     }
     
     // Error handlers
@@ -32,7 +33,7 @@ class AddSiteViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            // Remove any extra slashes from the start of the string (only keep the first one)
+            // Remove any extra slashes from the start and end of the string (only keep the first one)
             let trimmedInput = siteURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             siteURL = "/" + trimmedInput
             

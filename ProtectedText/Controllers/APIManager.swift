@@ -42,7 +42,7 @@ class APIManager {
     static private func performRequest<T: Codable>(_ request: URLRequest, responseType: T.Type) async throws -> (T, Data) {
         do {
             let (data, _) = try await session.data(for: request)
-                        
+            
             do {
                 let decoder = JSONDecoder()
                 let stringData = String(data: data, encoding: .utf8)
@@ -72,16 +72,17 @@ class APIManager {
             "encryptedContent": encryptedContent,
             "action": "save",
         ]
-        let body = bodyParameters.queryParameters.data(using: .utf8, allowLossyConversion: true)
+//        let body = bodyParameters.queryParameters.data(using: .utf8, allowLossyConversion: true)
+        let body = bodyParameters.urlEncodedString.data(using: .utf8)
         
-        guard let request = createRequest(endPoint: endPoint, body: body) else {
+        guard let request = createRequest(endPoint: endPoint, method: .POST, body: body) else {
             throw APIError.invalidURL
         }
         return try await performRequest(request, responseType: SaveDataResponse.self).0
     }
     
     static func getData(endPoint: String) async throws -> SiteData {
-        guard let request = createRequest(endPoint: "\(endPoint)?action=json") else {
+        guard let request = createRequest(endPoint: "\(endPoint)?action=json", method: .GET) else {
             throw APIError.invalidURL
         }
         return try await performRequest(request, responseType: SiteData.self).0
@@ -92,8 +93,8 @@ class APIManager {
             "initHashContent": initHashContent,
             "action": "delete",
         ]
-        let body = bodyParameters.queryParameters.data(using: .utf8, allowLossyConversion: true)
-        guard let request = createRequest(endPoint: endPoint, body: body) else {
+        let body = bodyParameters.urlEncodedString.data(using: .utf8)
+        guard let request = createRequest(endPoint: endPoint, method: .POST, body: body) else {
             throw APIError.invalidURL
         }
         return try await performRequest(request, responseType: EmptyResponse.self).0
@@ -131,7 +132,7 @@ class APIManager {
 struct SaveDataResponse: Codable {
     let status: String
     let message: String?
-    let expectedDBVersion: String?
+    let expectedDBVersion: Int?
 }
 
 enum HTTPMethod: String {
@@ -163,37 +164,16 @@ enum APIError: Error, LocalizedError {
     }
 }
 
-protocol URLQueryParameterStringConvertible {
-    var queryParameters: String {get}
-}
-
-extension Dictionary : URLQueryParameterStringConvertible {
-    /**
-     This computed property returns a query parameters string from the given NSDictionary. For
-     example, if the input is @{@"day":@"Tuesday", @"month":@"January"}, the output
-     string will be @"day=Tuesday&month=January".
-     @return The computed parameters string.
-    */
-    var queryParameters: String {
-        var parts: [String] = []
-        for (key, value) in self {
-            let part = String(format: "%@=%@",
-                String(describing: key).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!,
-                String(describing: value).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)
-            parts.append(part as String)
-        }
-        return parts.joined(separator: "&")
+extension Dictionary where Key == String, Value == String {
+    var urlEncodedString: String {
+        // allowedCharacters set is RFC 3986-compliant
+        // We will not use .alphanumeric because that does not include (-_.~) these four characters
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")
+        return self.map { key, value in
+            let encodedKey = key.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? ""
+            let encodedValue = value.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? ""
+            return "\(encodedKey)=\(encodedValue)"
+        }.joined(separator: "&")
     }
 }
 
-extension URL {
-    /**
-     Creates a new URL by adding the given query parameters.
-     @param parametersDictionary The query parameter dictionary to add.
-     @return A new URL.
-    */
-    func appendingQueryParameters(_ parametersDictionary : Dictionary<String, String>) -> URL {
-        let URLString : String = String(format: "%@?%@", self.absoluteString, parametersDictionary.queryParameters)
-        return URL(string: URLString)!
-    }
-}

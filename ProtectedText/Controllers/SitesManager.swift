@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftData
-import Combine
 
 @MainActor
 class SitesManager: ObservableObject {
@@ -82,6 +81,16 @@ class SitesManager: ObservableObject {
         siteTabsData[site.id] = tabs
     }
     
+    func getSites(withId siteURL: String) throws -> [Site] {
+        let fetchDescriptor = FetchDescriptor<Site>(
+            predicate: #Predicate { $0.id == siteURL }
+        )
+        
+        let matchingSites = try modelContext.fetch(fetchDescriptor)
+        
+        return matchingSites
+    }
+    
     private func updateSite(_ site: Site, with data: SiteData) throws {
         site.expectedDBVersion = data.expectedDBVersion
         site.currentDBVersion = data.currentDBVersion
@@ -92,9 +101,10 @@ class SitesManager: ObservableObject {
         
         guard let password = passwords[site.id] else { return }
         do {
-            let tabs = try site.decrypt(with: password)
+            let tabs: [String] = try site.decrypt(with: password)
             siteTabsData[site.id] = tabs
         } catch {
+            print(error.localizedDescription)
             // Dont show error here, this function runs at app launch
             // If decryption failed, we will attempt decryption again when user selects to view this site
             // show("Error!", with: error.localizedDescription)

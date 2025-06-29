@@ -40,54 +40,88 @@ enum CryptoError: Error, LocalizedError {
 
 class CryptoService {
 
-    static func evpBytesToKey(password: Data, salt: Data, keyLen: Int, ivLen: Int) -> Data {
+    // Fixed EVP_BytesToKey implementation to match OpenSSL standard
+    static func evpBytesToKey(password: Data, salt: Data, keyLen: Int, ivLen: Int) -> (key: Data, iv: Data) {
         var derived = Data()
-        var block = Data()
+        var previousHash = Data()
 
         while derived.count < keyLen + ivLen {
             var hasher = Insecure.MD5()
-            hasher.update(data: block)
+            
+            // Add previous hash if not first iteration
+            if !previousHash.isEmpty {
+                hasher.update(data: previousHash)
+            }
+            
             hasher.update(data: password)
             hasher.update(data: salt)
-            block = Data(hasher.finalize())
-            derived.append(block)
+            
+            previousHash = Data(hasher.finalize())
+            derived.append(previousHash)
         }
 
-        return derived.prefix(keyLen + ivLen)
+        let key = derived.prefix(keyLen)
+        let iv = derived.subdata(in: keyLen..<min(keyLen + ivLen, derived.count))
+        
+        return (key: key, iv: iv)
     }
 
     static func encryptOpenSSL(plaintext: String, password: String) throws -> String {
+        // Generate random 8-byte salt
         let salt = try randomSalt(length: 8)
-        let keyIv = evpBytesToKey(password: password.data(using: .utf8)!, salt: salt, keyLen: 32, ivLen: 16)
-
-        let key = keyIv.prefix(32)
-        let iv = keyIv.subdata(in: 32..<48)
-
-        let encrypted = try aesEncrypt(plaintext: plaintext, key: key, iv: iv)
-        let prefix = Data("Salted__".utf8) + salt
-        let fullData = prefix + encrypted
-
+        
+        // Convert password to UTF-8 data
+        guard let passwordData = password.data(using: .utf8) else {
+            throw CryptoError.encryptionFailed
+        }
+        
+        // Derive key and IV using corrected EVP_BytesToKey
+        let result = evpBytesToKey(password: passwordData, salt: salt, keyLen: 32, ivLen: 16)
+        
+        // Encrypt the plaintext
+        let encrypted = try aesEncrypt(plaintext: plaintext, key: result.key, iv: result.iv)
+        
+        // Create OpenSSL format: "Salted__" + salt + encrypted_data
+        let salted = Data("Salted__".utf8)
+        let fullData = salted + salt + encrypted
+        
         return fullData.base64EncodedString()
     }
 
     static func decryptOpenSSL(base64Encrypted: String, password: String) throws -> String {
-        guard let encryptedData = Data(base64Encoded: base64Encrypted) else {
+        // Clean the input string
+        let cleanedInput = base64Encrypted.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Decode base64
+        guard let encryptedData = Data(base64Encoded: cleanedInput) else {
+            print("Failed to decode base64 for string: \(cleanedInput)")
             throw CryptoError.invalidBase64
         }
-
+        
+        // Check minimum length (8 bytes for "Salted__" + 8 bytes for salt + at least 16 bytes for data)
+        guard encryptedData.count >= 24 else {
+            throw CryptoError.invalidFormat
+        }
+        
+        // Check for "Salted__" prefix
         let prefix = encryptedData.prefix(8)
         guard String(data: prefix, encoding: .utf8) == "Salted__" else {
             throw CryptoError.invalidFormat
         }
-
+        
+        // Extract salt and cipher text
         let salt = encryptedData.subdata(in: 8..<16)
-        let cipherText = encryptedData.advanced(by: 16)
-        let keyIv = evpBytesToKey(password: password.data(using: .utf8)!, salt: salt, keyLen: 32, ivLen: 16)
-
-        let key = keyIv.prefix(32)
-        let iv = keyIv.subdata(in: 32..<48)
-
-        return try aesDecrypt(cipherText: cipherText, key: key, iv: iv)
+        let cipherText = encryptedData.subdata(in: 16..<encryptedData.count)
+        
+        // Convert password to UTF-8 data
+        guard let passwordData = password.data(using: .utf8) else {
+            throw CryptoError.decryptionFailed
+        }
+        
+        // Derive key and IV using corrected EVP_BytesToKey
+        let result = evpBytesToKey(password: passwordData, salt: salt, keyLen: 32, ivLen: 16)
+        
+        return try aesDecrypt(cipherText: cipherText, key: result.key, iv: result.iv)
     }
 
     static func randomSalt(length: Int) throws -> Data {
@@ -106,7 +140,10 @@ class CryptoService {
     }
 
     private static func aesEncrypt(plaintext: String, key: Data, iv: Data) throws -> Data {
-        let data = Data(plaintext.utf8)
+        guard let data = plaintext.data(using: .utf8) else {
+            throw CryptoError.encryptionFailed
+        }
+        
         let encrypted = crypt(data: data, key: key, iv: iv, operation: kCCEncrypt)
         guard !encrypted.isEmpty else {
             throw CryptoError.encryptionFailed
@@ -131,14 +168,16 @@ class CryptoService {
         var outLength = Int(0)
 
         var outBytes = [UInt8](repeating: 0, count: dataLength + kCCBlockSizeAES128)
-        let result = CCCrypt(CCOperation(operation),
-                             CCAlgorithm(kCCAlgorithmAES),
-                             CCOptions(kCCOptionPKCS7Padding),
-                             [UInt8](key), keyLength,
-                             [UInt8](iv),
-                             [UInt8](data), dataLength,
-                             &outBytes, outBytes.count,
-                             &outLength)
+        let result = CCCrypt(
+            CCOperation(operation),
+            CCAlgorithm(kCCAlgorithmAES),
+            CCOptions(kCCOptionPKCS7Padding),
+            [UInt8](key), keyLength,
+            [UInt8](iv),
+            [UInt8](data), dataLength,
+            &outBytes, outBytes.count,
+            &outLength
+        )
 
         guard result == kCCSuccess else {
             return Data()
