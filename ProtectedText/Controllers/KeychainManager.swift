@@ -136,6 +136,16 @@ class KeychainManager: ObservableObject {
             throw KeychainError.saveFailed(status)
         }
     }
+    
+    /// Will clear all data from keychain
+    static func clearKeychain() {
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+    }
 
     // MARK: - App Lifecycle
 

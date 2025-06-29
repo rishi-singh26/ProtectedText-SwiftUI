@@ -19,6 +19,7 @@ struct SiteItemView: View {
                 .foregroundColor(.accentColor)
             HStack {
                 Text(site.id)
+                    .font(.body.bold())
                 Spacer()
                 if !site.archived {
                     if sitesManager.loadTracker[site.id] == true {
@@ -37,7 +38,7 @@ struct SiteItemView: View {
                 Button {
                     sitesViewModel.showSiteInfoSheet(site: site)
                 } label: {
-                    Label("Address Info", systemImage: "info.square")
+                    Label("Site Info", systemImage: "info.square")
                 }
                 .tint(.yellow)
                 Button {
@@ -82,7 +83,7 @@ struct SiteItemView: View {
                 Button {
                     sitesViewModel.showSiteInfoSheet(site: site)
                 } label: {
-                    Label("Address Info", systemImage: "info.circle")
+                    Label("Site Info", systemImage: "info.circle")
                 }
                 Button {
                     sitesViewModel.showEditSiteSheet(site: site)

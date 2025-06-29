@@ -14,6 +14,7 @@ struct SitesView: View {
         sort: [SortDescriptor(\Site.createdAt, order: .reverse)]
     )
     private var sites: [Site]
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var sitesViewModel: SitesViewModel
     @EnvironmentObject private var sitesManager: SitesManager
     
@@ -45,7 +46,7 @@ struct SitesView: View {
                 await sitesManager.fetchNotesForAllSites(sites)
             }
         })
-        .navigationTitle("Protected Text")
+        .navigationTitle("Sites")
         .searchable(text: $sitesViewModel.searchText, isPresented: $searchFieldPresented, placement: .sidebar)
         .listStyle(.sidebar)
         .sheet(isPresented: $sitesViewModel.showNewSiteSheet) {
@@ -147,11 +148,11 @@ struct SitesView: View {
                         })
                         Divider().frame(height: 30)
                         Menu {
-                            Button("Quick 3x3 Game", systemImage: "3.square") {
-        //                        addGame(3)
+                            Button("Clear Keychain", systemImage: "trash") {
+                                KeychainManager.clearKeychain()
                             }
-                            Button("Quick 4x4 Game", systemImage: "4.alt.square") {
-        //                        addGame(4)
+                            Button("Clear SwiftData", systemImage: "swiftdata") {
+                                modelContext.container.deleteAllData()
                             }
 //                            Picker("Sort Order", selection: $sortOrder) {
 //                                Text("Ascending")

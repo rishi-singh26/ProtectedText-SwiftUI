@@ -22,6 +22,9 @@ class AddSiteViewModel: ObservableObject {
         password != "" && password.count >= 6
     }
     
+    // Error handlers
+    @Published var errorText: String? = nil
+    
     func handleSubmitSite() async throws {
         guard !siteURL.isEmpty else { return }
         

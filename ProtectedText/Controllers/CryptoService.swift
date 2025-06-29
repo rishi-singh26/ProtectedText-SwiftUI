@@ -31,7 +31,7 @@ enum CryptoError: Error, LocalizedError {
         case .decryptionFailed:
             return "Decryption failed due to an internal error."
         case .verificationFailed:
-            return "Verification of cecrypted data failed. Please check your password"
+            return "Verification of decrypted data failed. Please check your password"
         case .randomBytesFailed(let status):
             return "Failed to generate secure random bytes. OSStatus: \(status)"
         }

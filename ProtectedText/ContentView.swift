@@ -26,7 +26,7 @@ struct ContentView: View {
             MacOSViewBuilder()
 #endif
         }
-        .alert(sitesManager.title, isPresented: .constant(sitesManager.message != nil)) {
+        .alert("Alert!", isPresented: .constant(sitesManager.message != nil)) {
             Button("Ok") {
                 sitesManager.clearMessage()
             }
@@ -84,11 +84,11 @@ struct ContentView: View {
                     Label("Settings", systemImage: "gear")
                 }
                 Menu {
-                    Button("Quick 3x3 Game", systemImage: "3.square") {
-//                        addGame(3)
+                    Button("Clear Keychain", systemImage: "trash") {
+                        KeychainManager.clearKeychain()
                     }
-                    Button("Quick 4x4 Game", systemImage: "4.alt.square") {
-//                        addGame(4)
+                    Button("Clear SwiftData", systemImage: "swiftdata") {
+                        modelContext.container.deleteAllData()
                     }
 //                    Picker("Sort Games By", selection: $sortBy) {
 //                        Text("Name")

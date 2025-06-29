@@ -7,20 +7,27 @@
 
 import SwiftUI
 
-struct PasswordField: View {
+struct PasswordField<Style: TextFieldStyle>: View {
     @Binding var password: String
     @State private var isPasswordVisible: Bool = false
 
     var placeholder: String
+    var textFieldStyle: Style
     
     var body: some View {
         HStack {
             if isPasswordVisible {
                 TextField(placeholder, text: $password)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .textFieldStyle(textFieldStyle)
+#if os(iOS)
+                    .textInputAutocapitalization(.never)
+#endif
             } else {
                 SecureField(placeholder, text: $password)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .textFieldStyle(textFieldStyle)
+#if os(iOS)
+                    .textInputAutocapitalization(.never)
+#endif
             }
             
             Button(action: {
@@ -34,5 +41,5 @@ struct PasswordField: View {
 }
 
 #Preview {
-    PasswordField(password: .constant(""), placeholder: "Enter password")
+    PasswordField(password: .constant(""), placeholder: "Enter password", textFieldStyle: .roundedBorder)
 }

@@ -22,7 +22,6 @@ class SitesManager: ObservableObject {
     @Published var passwords: [String: String] = [:]
     
     // For showing error or success message to user
-    @Published var title: String = "Alert"
     @Published var message: String?
     
     @Published var selectedSite: Site? = nil
@@ -34,18 +33,24 @@ class SitesManager: ObservableObject {
         do {
             self.passwords = try KeychainManager.retrieveKeychainData()
         } catch {
-            show("Error", with: error.localizedDescription)
+            switch error {
+            case KeychainError.itemNotFound:
+                break
+            default:
+                showError(with: error.localizedDescription)
+            }
         }
     }
     
     func fetchNotesForAllSites(_ sites: [Site]) async {
         defer { loadTracker = [:] }
         guard !sites.isEmpty else { return }
+        
         await withTaskGroup(of: Void.self) { group in
             for site in sites {
                 let id = site.id
                 loadTracker[id] = true
-                
+
                 group.addTask {
                     await self.fetchNotes(for: site)
                 }
@@ -58,7 +63,7 @@ class SitesManager: ObservableObject {
             let response = try await APIManager.getData(endPoint: site.id)
             self.loadTracker.removeValue(forKey: site.id)
             self.errorTracker.removeValue(forKey: site.id)
-            updateSite(site, with: response)
+            try updateSite(site, with: response)
         } catch {
             self.loadTracker.removeValue(forKey: site.id)
             self.errorTracker[site.id] = error.localizedDescription
@@ -71,25 +76,19 @@ class SitesManager: ObservableObject {
         await fetchNotes(for: site)
     }
     
-    func createSite(_ site: Site, with password: String) {
+    func createSite(_ site: Site, with tabs: [String]) throws {
         modelContext.insert(site)
-        saveChanges()
-        
-        do {
-            let tabs = try site.decrypt(with: password)
-            siteTabsData[site.id] = tabs
-        } catch {
-            show("Error!", with: error.localizedDescription)
-        }
+        try saveChanges()
+        siteTabsData[site.id] = tabs
     }
     
-    private func updateSite(_ site: Site, with data: SiteData) {
+    private func updateSite(_ site: Site, with data: SiteData) throws {
         site.expectedDBVersion = data.expectedDBVersion
         site.currentDBVersion = data.currentDBVersion
         site.siteContent = data.eContent
         site.isNew = data.isNew
         
-        saveChanges()
+        try saveChanges()
         
         guard let password = passwords[site.id] else { return }
         do {
@@ -102,22 +101,16 @@ class SitesManager: ObservableObject {
         }
     }
     
-    private func saveChanges() {
-        do {
-            try modelContext.save()
-        } catch {
-            self.show("Alert", with: error.localizedDescription)
-        }
+    private func saveChanges() throws {
+        try modelContext.save()
     }
     
     /// Clears any error message
     func clearMessage() {
         self.message = nil
-        self.title = "Alert"
     }
     
-    func show(_ title: String, with message: String) {
-        self.title = title
+    func showError(with message: String) {
         self.message = message
     }
 }

@@ -34,7 +34,7 @@ struct SiteInfoView: View {
                     ShareLink(item: """
                               Login using the details below at \(APIManager.baseURL) website.
                               Site: \(APIManager.baseURL)\(site.id)
-                              Password: \(site.password)
+                              Password: \("site.password")
                               """)
                 }
                 ToolbarItem(placement: .topBarTrailing) {

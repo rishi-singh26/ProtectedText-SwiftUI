@@ -20,6 +20,13 @@ struct AddSiteView: View {
             MacOSAddAddressForm()
 #endif
         }
+        .alert("Alert!", isPresented: .constant(controller.errorText != nil)) {
+            Button("Ok") {
+                controller.errorText = nil
+            }
+        } message: {
+            Text(controller.errorText ?? "")
+        }
     }
     
 #if os(iOS)
@@ -27,32 +34,80 @@ struct AddSiteView: View {
     func IOSAddAddressForm() -> some View {
         NavigationView {
             Form {
+                Section {
+                    TextField("Site URL (/yoursite)", text: $controller.siteURL)
+                        .textInputAutocapitalization(.never)
+                        .submitLabel(.go)
+                        .onSubmit(submitSite)
+                        .onChange(of: controller.siteURL, { _, _ in
+                            controller.resetSiteData()
+                        })
+                    HStack {
+                        Spacer()
+                        Button {
+                            submitSite()
+                        } label: {
+                            Text("Go")
+                                .padding(.horizontal)
+                        }
+                        .disabled(controller.siteURL.isEmpty)
+    //                    .buttonStyle(.borderedProminent)
+                    }
+                }
                 
+                if let siteData = controller.siteData, !siteData.isNew {
+                    Section {
+                        Text("This site (**\(controller.siteURL)**) is already occupied.\n\nIf this is your site enter the password used to encrypt this site, or you can try using different site.")
+                        PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .plain)
+                        ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
+                        HStack {
+                            Spacer()
+                            Button("Add Site", action: handleAddSite)
+                                .disabled(controller.password.isEmpty)
+                                .buttonStyle(.borderedProminent)
+                        }
+                    }
+                }
+                
+                if let siteData = controller.siteData, siteData.isNew {
+                    Section {
+                        Text("**Great! This site does not exist**.\n\nIn order to take ownership, of this site, create a password.\nIf you forget this password, you will loose access to this site.")
+                        PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .plain)
+                        PasswordField(password: $controller.repeatPassword, placeholder: "Repeat Password", textFieldStyle: .plain)
+                        ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
+                        HStack {
+                            Button("Generate Password", action: controller.generateRandomPass)
+                            Spacer()
+                            Button("Create Site") {
+                                
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    
+                    HStack(alignment: .top) {
+                        Image(systemName: "info.square.fill")
+                            .font(.title2)
+                            .foregroundColor(.yellow)
+                            .background(RoundedRectangle(cornerRadius: 5).fill(.white))
+                        Text("Password ones set can be reset only if the original password is known.\nIf you forget your password, you will loose access to your site.")
+                    }
+                    .listRowBackground(Color.yellow.opacity(0.2))
+                }
             }
-            .navigationTitle("Add Site")
+            .navigationTitle("New Site")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    if controller.isLoading {
+                if controller.isLoading {
+                    ToolbarItem(placement: .topBarTrailing) {
                         ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Button {
-                        } label: {
-                            Text("Save")
-                                .font(.headline)
-                        }
+                            .controlSize(.regular)
                     }
                 }
-                
-            }
-            .alert(isPresented: $controller.showErrorAlert) {
-                Alert(title: Text("Alert!"), message: Text(controller.errorMessage))
             }
         }
     }
@@ -70,6 +125,9 @@ struct AddSiteView: View {
                     ProgressView()
                         .controlSize(.small)
                 }
+                Button("Cancel") {
+                    dismiss()
+                }
             }
             .padding([.top, .horizontal], 25)
             List {
@@ -79,7 +137,7 @@ struct AddSiteView: View {
                         HStack {
                             TextField("/yoursite", text: $controller.siteURL)
                                 .textFieldStyle(.roundedBorder)
-                                .submitLabel(.send)
+                                .submitLabel(.go)
                                 .onChange(of: controller.siteURL, { _, _ in
                                     controller.resetSiteData()
                                 })
@@ -97,7 +155,7 @@ struct AddSiteView: View {
                     MacCustomSection {
                         VStack(alignment: .leading) {
                             Text("This site (**\(controller.siteURL)**) is already occupied.\n\nIf this is your site enter the password used to encrypt this site, or you can try using different site.")
-                            PasswordField(password: $controller.password, placeholder: "Password")
+                            PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .roundedBorder)
                             ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
                                 .padding(.vertical, 6)
                             HStack {
@@ -116,8 +174,8 @@ struct AddSiteView: View {
                     MacCustomSection {
                         VStack(alignment: .leading) {
                             Text("**Great! This site does not exist**.\n\nIn order to take ownership, of this site, create a password.\nIf you forget this password, you will loose access to this site.")
-                            PasswordField(password: $controller.password, placeholder: "Password")
-                            PasswordField(password: $controller.repeatPassword, placeholder: "Repeat Password")
+                            PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .roundedBorder)
+                            PasswordField(password: $controller.repeatPassword, placeholder: "Repeat Password", textFieldStyle: .roundedBorder)
                             ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
                                 .padding(.vertical, 6)
                             HStack {
@@ -139,7 +197,7 @@ struct AddSiteView: View {
                                 .foregroundColor(.yellow)
                                 .background(RoundedRectangle(cornerRadius: 5).fill(.white))
                             Spacer()
-                            Text("Password ones set can be reset only if the origin password is known. If you loose your password, you will loose access to your site.")
+                            Text("Password ones set can be reset only if the original password is known. If you forget your password, you will loose access to your site.")
                         }
                         .padding(6)
                     }
@@ -151,13 +209,6 @@ struct AddSiteView: View {
             .listStyle(.plain)
         }
         .frame(height: 400)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    dismiss()
-                }
-            }
-        }
     }
 #endif
     
@@ -166,7 +217,7 @@ struct AddSiteView: View {
             do {
                 try await controller.handleSubmitSite()
             } catch {
-                sitesManager.show("Alert", with: error.localizedDescription)
+                controller.errorText = error.localizedDescription
             }
         }
     }
@@ -182,17 +233,21 @@ struct AddSiteView: View {
                 siteContent: siteData.eContent,
                 createdAt: Date.now
             )
-
-            sitesManager.createSite(newSite, with: controller.password)
             
+            // decrypt and extract data
+            let tabs = try newSite.decrypt(with: controller.password)
+            // save site to swiftdata
+            try sitesManager.createSite(newSite, with: tabs)
+            // save password to keychain
             if controller.shouldSavePass {
                 var updatedPasswords = sitesManager.passwords
                 updatedPasswords[controller.siteURL] = controller.password
                 try KeychainManager.saveKeychainData(updatedPasswords)
                 sitesManager.passwords = updatedPasswords
             }
+            dismiss()
         } catch {
-            sitesManager.show("Error", with: error.localizedDescription)
+            controller.errorText = error.localizedDescription
         }
     }
 }
@@ -202,126 +257,43 @@ struct ShouldSavePasswordToggle: View {
     @Binding var shouldSave: Bool
     
     var body: some View {
+#if os(iOS)
+        BuildTile()
+#elseif os(macOS)
         GroupBox {
-            HStack {
-                Toggle("Save password", isOn: $shouldSave)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                Button("Info") {
-                    showPopOver = true
-                }
-                .popover(isPresented: $showPopOver) {
-                    Text("When you enable this option, your password will be securely stored in your device’s Apple Keychain. Access to the stored password is protected by your device's authentication — such as Face ID, Touch ID, or passcode.\n\nYour password never leaves your device, and only you can access it. We use Apple’s security framework to ensure your data is encrypted and protected by user presence verification.\n\nYou can turn this off at any time, and your saved password will be removed from the device.")
-                        .padding()
-                    
-                    Text("Your password will be securely stored in Apple Keychain and protected by Face ID, Touch ID, or your device passcode. It stays on your device and can only be accessed by you.\n\nYou can turn this off at any time, and your saved password will be removed from the device.")
-                        .padding()
+            BuildTile()
+        }
+#endif
+    }
+    
+    @ViewBuilder
+    func BuildTile() -> some View {
+        HStack {
+            Toggle(isOn: $shouldSave) {
+                HStack {
+                    Text("Save password")
+                    Button {
+                        showPopOver = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .popover(isPresented: $showPopOver) {
+        //                    Text("When you enable this option, your password will be securely stored in your device’s Apple Keychain. Access to the stored password is protected by your device's authentication — such as Face ID, Touch ID, or passcode.\n\nYour password never leaves your device, and only you can access it. We use Apple’s security framework to ensure your data is encrypted and protected by user presence verification.\n\nYou can turn this off at any time, and your saved password will be removed from the device.")
+        //                        .padding()
+                        
+                        Text("Your password will be securely stored in Apple Keychain and protected by Face ID, Touch ID, or your device passcode. It stays on your device and can only be accessed by you.\n\nYou can turn this off at any time, and your saved password will be removed from the device.")
+                            .padding()
+                            .frame(width: 360, height: 300)
+                            .presentationCompactAdaptation(.popover)
+                    }
                 }
             }
+                .toggleStyle(.switch)
+                .controlSize(.small)
         }
     }
 }
 
 #Preview {
-    @Previewable @State var showPopover = false
-    VStack(spacing: 0) {
-        HStack {
-            Text("Add Site")
-                .font(.title3.bold())
-            Spacer()
-        }
-        .padding([.top, .horizontal], 25)
-        List {
-            MacCustomSection {
-                VStack(alignment: .leading) {
-                    Text("Enter site URL")
-                    HStack {
-                        TextField("/yoursite", text: .constant(""))
-                            .textFieldStyle(.roundedBorder)
-                            .submitLabel(.send)
-                        Button {
-                            
-                        } label: {
-                            Text("Go")
-                                .padding(.horizontal)
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .listRowSeparator(.hidden)
-            .padding(.top)
-                
-            MacCustomSection {
-                VStack(alignment: .leading) {
-                    Text("This site (**\\sitename**) is already occupied. If this is your site enter the password used to encrypt this site, or you can try using different site.")
-                    PasswordField(password: .constant(""), placeholder: "Password")
-                    GroupBox {
-                        HStack {
-                            Toggle("Save password", isOn: .constant(false))
-                                .toggleStyle(.switch)
-                                .controlSize(.small)
-                            Button("Info") {
-                                showPopover = true
-                            }
-                            .popover(isPresented: $showPopover) {
-                                Text("Some more content")
-                            }
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    HStack {
-                        Spacer()
-                        Button("Add Site") {
-                            
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .listRowSeparator(.hidden)
-            
-            MacCustomSection {
-                VStack(alignment: .leading) {
-                    Text("**Great! This site does not exist**.\n\nIn order to take ownership, of this site, create a password.\nIf you forget this password, you will loose access to this site.")
-                    PasswordField(password: .constant(""), placeholder: "Password")
-                    PasswordField(password: .constant(""), placeholder: "Repeat Password")
-                    HStack {
-                        Spacer()
-                        Button("Generate Password") {
-                            
-                        }
-                        Button("Create Site") {
-                            
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .listRowSeparator(.hidden)
-            
-            GroupBox {
-                HStack(alignment: .center) {
-                    Image(systemName: "info.square.fill")
-                        .font(.title2)
-                        .foregroundColor(.yellow)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(.white))
-                    Spacer()
-                    Text("Password ones set can be reset only if the origin password is known. If you loose your password, you will loose access to your site.")
-                }
-                .padding(6)
-            }
-            .background(RoundedRectangle(cornerRadius: 5).fill(.yellow.opacity(0.3)))
-            .padding(.horizontal)
-            .padding(.bottom)
-        }
-        .listStyle(.plain)
-    }
-    .frame(height: 400)
-    .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") {
-            }
-        }
-    }
+    Label("Hello", systemImage: "globe")
 }
