@@ -14,96 +14,88 @@ struct SiteItemView: View {
     let site: Site
     
     var body: some View {
+        SiteItemTile()
+            .swipeActions(edge: .leading) {
+                SiteInfoBtn()
+            }
+            .swipeActions(edge: .trailing) {
+                DeleteBtn()
+                ArchiveBtn()
+            }
+            .contextMenu(menuItems: {
+                RefreshBtn()
+                SiteInfoBtn()
+                Divider()
+                ArchiveBtn()
+                DeleteBtn()
+            })
+    }
+    
+    @ViewBuilder
+    func SiteItemTile() -> some View {
         HStack {
-            Image(systemName: "tray")
-                .foregroundColor(.accentColor)
-            HStack {
+            Label {
                 Text(site.id)
                     .font(.body.bold())
-                Spacer()
-                if !site.archived {
-                    if sitesManager.loadTracker[site.id] == true {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else if sitesManager.errorTracker[site.id] != nil {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                    } else if let count = sitesManager.siteTabsData[site.id]?.count  {
-                        Text("\(count)")
-                            .foregroundColor(.secondary)
-                    }
+            } icon: {
+                Image(systemName: "link")
+            }
+            Spacer()
+            if !site.archived {
+                if sitesManager.loadTracker[site.id] == true {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if sitesManager.errorTracker[site.id] != nil {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                } else if let count = sitesManager.siteTabsData[site.id]?.count  {
+                    Text("\(count)")
+                        .foregroundColor(.secondary)
                 }
             }
         }
-            .swipeActions(edge: .leading) {
-                Button {
-                    sitesViewModel.showSiteInfoSheet(site: site)
-                } label: {
-                    Label("Site Info", systemImage: "info.square")
-                }
-                .tint(.yellow)
-                Button {
-//                    Task {
-//                        await addressesController.refreshMessages(for: address)
-//                    }
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise.circle")
-                }
-                .tint(.blue)
-                Button {
-                    sitesViewModel.showEditSiteSheet(site: site)
-                } label: {
-                    Label("Edit", systemImage: "pencil.circle")
-                }
-                .tint(.orange)
+    }
+    
+    @ViewBuilder
+    func SiteInfoBtn() -> some View {
+        Button {
+            sitesViewModel.showSiteInfoSheet(site: site)
+        } label: {
+            Label("Site Info", systemImage: "info.square")
+        }
+        .tint(.yellow)
+    }
+    
+    @ViewBuilder
+    func DeleteBtn() -> some View {
+        Button(role: .destructive) {
+            sitesViewModel.deleteSite(site: site)
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+        .tint(.red)
+    }
+    
+    @ViewBuilder
+    func ArchiveBtn() -> some View {
+        Button {
+            Task {
+                sitesManager.toggleArchiveStatus(for: site)
             }
-            .swipeActions(edge: .trailing) {
-                Button {
-                    sitesViewModel.deleteSite(site: site)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-                .tint(.red)
-                Button {
-//                    Task {
-//                        await addressesController.toggleAddressStatus(address)
-//                    }
-                } label: {
-                    Label("Archive", systemImage: "archivebox")
-                }
-                .tint(.indigo)
+        } label: {
+            Label("Archive", systemImage: "archivebox")
+        }
+        .tint(.indigo)
+    }
+    
+    @ViewBuilder
+    func RefreshBtn() -> some View {
+        Button {
+            Task {
+                await sitesManager.refreshTabs(for: site)
             }
-            .contextMenu(menuItems: {
-                Button {
-//                    Task {
-//                        await addressesController.refreshMessages(for: address)
-//                    }
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise.circle")
-                }
-                Button {
-                    sitesViewModel.showSiteInfoSheet(site: site)
-                } label: {
-                    Label("Site Info", systemImage: "info.circle")
-                }
-                Button {
-                    sitesViewModel.showEditSiteSheet(site: site)
-                } label: {
-                    Label("Edit", systemImage: "pencil.circle")
-                }
-                Divider()
-                Button {
-//                    Task {
-//                        await addressesController.toggleAddressStatus(address)
-//                    }
-                } label: {
-                    Label("Archive", systemImage: "archivebox")
-                }
-                Button(role: .destructive) {
-                    sitesViewModel.deleteSite(site: site)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            })
+        } label: {
+            Label("Refresh", systemImage: "arrow.clockwise.circle")
+        }
     }
 }
 

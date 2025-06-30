@@ -99,4 +99,29 @@ extension String {
         return formatter.date(from: self)
     }
 
+    func getTabTitle(length: Int = 200) -> String {
+        var title: String?
+        
+        if self.isEmpty { return "Empty Tab" }
+        
+        // Look for the first non-whitespace character
+        if let firstNonWhitespaceIndex = self.firstIndex(where: { !CharacterSet.whitespacesAndNewlines.contains($0.unicodeScalars.first!) }) {
+            let remainingContent = self[firstNonWhitespaceIndex...]
+            
+            // Find the first newline after the first non-whitespace character
+            if let newLineIndex = remainingContent.firstIndex(of: "\n") {
+                title = String(remainingContent[..<newLineIndex])
+            } else {
+                title = String(remainingContent.prefix(length))
+            }
+        }
+        
+        if title?.count ?? 0 > length {
+            title = String(title?.prefix(length) ?? "")
+        }
+        
+        if title?.isEmpty ?? true { return "Empty Tab" }
+        
+        return title ?? "Empty Tab"
+    }
 }

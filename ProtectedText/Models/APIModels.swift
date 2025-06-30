@@ -1,5 +1,5 @@
 //
-//  SiteData.swift
+//  APIModels.swift
 //  ProtectedText
 //
 //  Created by Rishi Singh on 27/06/25.
@@ -12,4 +12,14 @@ struct SiteData: Codable {
     var isNew: Bool
     var currentDBVersion: Int
     var expectedDBVersion: Int
+}
+
+struct SaveDataResponse: Codable {
+    let status: String
+    let message: String?
+    let expectedDBVersion: Int?
+}
+
+struct DeleteSiteResponse: Codable {
+    let status: String
 }

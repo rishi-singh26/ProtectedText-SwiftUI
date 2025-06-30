@@ -223,7 +223,7 @@ struct AddSiteView: View {
     private func handleAddSite() {
         guard let siteData = controller.siteData else { return }
         do {
-            guard try isSiteUnique() else { return }
+            guard isSiteUnique() else { return }
             
             let newSite = Site(
                 siteURL: controller.siteURL,
@@ -250,8 +250,10 @@ struct AddSiteView: View {
         }
     }
     
-    private func isSiteUnique() throws -> Bool {
-        let sitesWithSameURL = try sitesManager.getSites(withId: controller.siteURL)
+    private func isSiteUnique() -> Bool {
+        let sitesWithSameURL = (sitesManager.sites + sitesManager.archivedSites).filter { site in
+            site.id == controller.siteURL
+        }
         guard sitesWithSameURL.isEmpty else {
             controller.errorText = sitesWithSameURL.first?.archived == true
                 ? "This site has already been added and is present in the archived sites section."
@@ -264,6 +266,9 @@ struct AddSiteView: View {
     private func handleCreateSite() {
         Task {
             guard let siteData = controller.siteData else { return }
+            // validate password
+            guard !controller.disableCreateSiteBtn else { return }
+            
             do {
                 let newSite = Site(
                     siteURL: controller.siteURL,
@@ -276,8 +281,9 @@ struct AddSiteView: View {
                 // Create site by adding some content
                 let creationContent = "This text has been added so you can take ownership of this newly created site, you can remove this text now."
                 // Save the data into www.protectedtext.com server
-                let result = try await newSite.save(with: controller.password, and: [creationContent])
+                let (result, eContent) = try await newSite.save(with: controller.password, and: [creationContent])
                 if (result.status.lowercased() == "success") {
+                    newSite.siteContent = eContent
                     // save site to swiftdata
                     try sitesManager.createSite(newSite, with: [creationContent])
                     // save password to keychain
@@ -299,19 +305,7 @@ struct AddSiteView: View {
                     }
                 }
                 else {
-//                    $("#dialog-site-modified").dialog({ // text was changed in the meantime, show dialog
-//                        dialogClass : "no-close active-dialog",
-//                        modal : true,
-//                        minWidth: 345,
-//                        buttons : {
-//                            "OK" : function() {
-//                                $(this).dialog("close");
-//                            }
-//                        },
-//                        close: function( event, ui ) {
-//                            focusActiveTextarea();
-//                        }
-//                    });
+                    // text was changed in the meantime, show dialog to reload data and show changes
                 }
             } catch {
                 controller.errorText = error.localizedDescription

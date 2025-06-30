@@ -88,7 +88,7 @@ class APIManager {
         return try await performRequest(request, responseType: SiteData.self).0
     }
     
-    static func deleteData(endPoint: String, initHashContent: String) async throws -> EmptyResponse {
+    static func deleteData(endPoint: String, initHashContent: String) async throws -> DeleteSiteResponse {
         let bodyParameters: [String: String] = [
             "initHashContent": initHashContent,
             "action": "delete",
@@ -97,7 +97,7 @@ class APIManager {
         guard let request = createRequest(endPoint: endPoint, method: .POST, body: body) else {
             throw APIError.invalidURL
         }
-        return try await performRequest(request, responseType: EmptyResponse.self).0
+        return try await performRequest(request, responseType: DeleteSiteResponse.self).0
     }
     
     static private func customUserAgent() -> String {
@@ -129,20 +129,12 @@ class APIManager {
 
 }
 
-struct SaveDataResponse: Codable {
-    let status: String
-    let message: String?
-    let expectedDBVersion: Int?
-}
-
 enum HTTPMethod: String {
     case GET = "GET"
     case POST = "POST"
     case PATCH = "PATCH"
     case DELETE = "DELETE"
 }
-
-struct EmptyResponse: Codable {}
 
 enum APIError: Error, LocalizedError {
     case invalidURL

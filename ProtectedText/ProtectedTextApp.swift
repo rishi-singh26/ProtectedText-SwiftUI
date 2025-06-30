@@ -13,6 +13,7 @@ struct ProtectedTextApp: App {
     var sharedModelContainer: ModelContainer
     @StateObject private var sitesManager: SitesManager
     @StateObject private var sitesViewModel = SitesViewModel()
+    @StateObject private var tabsViewModel = TabsViewModel()
     
     init() {
         let container: ModelContainer
@@ -31,9 +32,27 @@ struct ProtectedTextApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(sitesViewModel)
                 .environmentObject(sitesManager)
+                .environmentObject(sitesViewModel)
+                .environmentObject(tabsViewModel)
         }
         .modelContainer(sharedModelContainer)
+        .commands {
+            CommandGroup(after: .saveItem) {
+                Button("Save") {
+                    Task {
+                        let (status, message) = await sitesManager.saveSelectedSite()
+                        if !status {
+                            if message == KOPResult {
+                                sitesManager.showAlert(with: KOPMessage)
+                                return
+                            }
+                            sitesManager.showAlert(with: message)
+                        }
+                    }
+                }
+                .keyboardShortcut("s", modifiers: [.command])
+            }
+        }
     }
 }
