@@ -158,6 +158,26 @@ class SitesManager: ObservableObject {
         }
     }
     
+    func addTab(to site: Site) async -> (Bool, String) {
+        // Create a copy of siteTabsData
+        var siteTabsDataCopy = siteTabsData
+        
+        // Early exit if data not available
+        guard var tabs = siteTabsDataCopy[site.id] else { return (false, "Site tabs not available. Something wend wrong!") }
+        
+        // Add tab to copyied data
+        tabs.append("")
+        siteTabsDataCopy[site.id] = tabs
+        
+        // Save updated tabs to server
+        let (status, message) = await saveSite(site, with: tabs)
+        if status {
+            // Update the siteTabsData ones saved successfully on server
+            siteTabsData = siteTabsDataCopy
+        }
+        return (status, message)
+    }
+    
     func deleteSelectedTab() async -> (Bool, String) {
         // Early exit if no selected site or tab index
         guard let site = selectedSite else { return (false, "No site selected, please select a site.") }

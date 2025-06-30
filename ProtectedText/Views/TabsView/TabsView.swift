@@ -40,6 +40,7 @@ struct TabsView: View {
                     ? "Refresh selected site"
                     : "Refresh \(sitesManager.selectedSite!.id)"
             )
+            
             Button(role: .destructive) {
                 guard let selectedTabIndex = sitesManager.selectedTabIndex else { return }
                 tabsViewModel.showTabDeletionConfirmation(index: selectedTabIndex)
@@ -48,6 +49,30 @@ struct TabsView: View {
             }
             .disabled(sitesManager.selectedSite == nil || sitesManager.selectedTabIndex == nil)
             .help("Delete selected tab")
+            
+            Button(action: addTab) {
+                Label("Add Tab", systemImage: "square.and.pencil")
+            }
+            .disabled(sitesManager.selectedSite == nil)
+            .help(
+                sitesManager.selectedSite == nil
+                    ? "Add tab"
+                    : "Add tab to \(sitesManager.selectedSite!.id)"
+            )
+        }
+    }
+    
+    func addTab() {
+        guard let site = sitesManager.selectedSite else { return }
+        Task {
+            let (status, message) = await sitesManager.addTab(to: site)
+            guard !status else { return }
+            
+            if message == KOPResult {
+                tabsViewModel.errorAlertMessage = KOPMessage
+                return
+            }
+            tabsViewModel.errorAlertMessage = message
         }
     }
 }
@@ -106,9 +131,26 @@ struct TabsListView: View {
         .navigationTitle(site.id)
 #if os(iOS)
         .toolbar(content: {
-            ToolbarItem {
-                Button("Site Information", systemImage: "info.circle") {
-                    print(site.siteContent)
+            ToolbarItem(placement: .bottomBar) {
+                HStack(alignment: .center) {
+                    Button("Site Information", systemImage: "info.circle") {
+//                        print(site.siteContent)
+                    }
+                    .help("Site information")
+                    Spacer()
+                    if sitesManager.saveTracker == site.id {
+                        ProgressView()
+                            .controlSize(.mini)
+                    }
+                    Text("\(tabs.count) Tab\(tabs.count < 2 ? "" : "s")")
+                        .font(.footnote)
+                    Spacer()
+                    Button("Add Tab", systemImage: "square.and.pencil") {
+                        Task {
+                            handleSiteSaveResult(result: await sitesManager.addTab(to: site))
+                        }
+                    }
+                    .help("Add tab to \(site.id)")
                 }
             }
         })
@@ -151,15 +193,19 @@ struct TabsListView: View {
         }
         tabsViewModel.selectedTabIndexForDeletion = nil
         Task {
-            let (status, message) = await sitesManager.deleteTab(at: index, from: site)
-            guard !status else { return }
-            
-            if message == KOPResult {
-                tabsViewModel.errorAlertMessage = KOPMessage
-                return
-            }
-            tabsViewModel.errorAlertMessage = message
+            handleSiteSaveResult(result: await sitesManager.deleteTab(at: index, from: site))
         }
+    }
+    
+    private func handleSiteSaveResult(result: (Bool, String)) {
+        let (status, message) = result
+        guard !status else { return }
+        
+        if message == KOPResult {
+            tabsViewModel.errorAlertMessage = KOPMessage
+            return
+        }
+        tabsViewModel.errorAlertMessage = message
     }
 }
 

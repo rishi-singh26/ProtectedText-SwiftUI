@@ -41,7 +41,7 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 195, ideal: 195, max: 340)
         } content: {
             TabsView()
-                .navigationSplitViewColumnWidth(min: 260, ideal: 260, max: 400)
+                .navigationSplitViewColumnWidth(min: 290, ideal: 290, max: 400)
         } detail: {
             TabDetailView()
                 .navigationSplitViewColumnWidth(min: 440, ideal: 440)
