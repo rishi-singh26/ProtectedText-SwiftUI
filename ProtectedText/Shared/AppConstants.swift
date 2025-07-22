@@ -18,6 +18,8 @@ let KTabDelMessage = "Are you sure you want to delete this tab?\nThis action is 
 let KNewTabContent = """
 Enter title here
 ——————————————————————————————
+\(Date.now.formatted(date: .complete, time: .shortened))
+==============================
 Enter content here
 """
 
