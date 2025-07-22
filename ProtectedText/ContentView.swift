@@ -10,12 +10,15 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var sitesManager: SitesManager
     @EnvironmentObject private var sitesViewModel: SitesViewModel
+    @EnvironmentObject private var appController: AppController
 
     var body: some View {
         Group {
 #if os(iOS)
-            NavigationStack {
-                SitesView()
+            if DeviceType.isIphone {
+                IPhoneNavigtionBuilder()
+            } else {
+                IPadNavigationBuilder()
             }
 #elseif os(macOS)
             MacOSViewBuilder()
@@ -50,8 +53,60 @@ struct ContentView: View {
 #endif
 }
 
+// MARK: - Navigation View Builders
+extension ContentView {
+#if os(iOS)
+    @ViewBuilder
+    private func IPhoneNavigtionBuilder() -> some View {
+        NavigationStack(path: $appController.path) {
+            SitesView()
+                .navigationDestination(for: Site.self, destination: handleAddressNavigation)
+                .navigationDestination(for: String.self, destination: handleMessageNavigation)
+        }
+    }
+    
+    @ViewBuilder
+    private func IPadNavigationBuilder() -> some View {
+        NavigationSplitView(columnVisibility: .constant(.doubleColumn)) {
+            SitesView()
+        } detail: {
+            NavigationStack(path: $appController.path) {
+                TabsView()
+                    .navigationDestination(for: String.self, destination: handleMessageNavigation)
+            }
+        }
+    }
+    
+    private func handleAddressNavigation(site: Site) -> some View {
+        TabsView()
+    }
+    
+    private func handleMessageNavigation(tabData: String) -> some View {
+        TabDetailView()
+    }
+    
+#elseif os(macOS)
+    @ViewBuilder
+    private func MacNavigationBuilder() -> some View {
+        NavigationSplitView {
+            VStack(spacing: 0) {
+                SitesView()
+                NewSiteBtn()
+            }
+            .navigationSplitViewColumnWidth(min: 195, ideal: 195, max: 340)
+        } content: {
+            TabsView()
+                .navigationSplitViewColumnWidth(min: 290, ideal: 290, max: 400)
+        } detail: {
+            TabDetailView()
+                .navigationSplitViewColumnWidth(min: 440, ideal: 440)
+        }
+    }
+#endif
+}
+
 #if os(macOS)
-struct NewSiteBtn: View {
+private struct NewSiteBtn: View {
     @EnvironmentObject private var sitesViewModel: SitesViewModel
     @State private var isHovering: Bool = false
     

@@ -10,25 +10,45 @@ import SwiftUI
 struct SiteItemView: View {
     @EnvironmentObject private var sitesManager: SitesManager
     @EnvironmentObject private var sitesViewModel: SitesViewModel
+    @EnvironmentObject private var appController: AppController
     
     let site: Site
     
     var body: some View {
-        SiteItemTile()
-            .swipeActions(edge: .leading) {
-                SiteInfoBtn()
+        Group {
+#if os(iOS)
+            if DeviceType.isIphone {
+                Button {
+                    sitesManager.selectedSite = site
+                    if DeviceType.isIphone {
+                        appController.path.append(site)
+                    } else {
+                        appController.path = NavigationPath()
+                    }
+                } label: {
+                    SiteItemTile()
+                }
+            } else {
+                SiteItemTile()
             }
-            .swipeActions(edge: .trailing) {
-                DeleteBtn()
-                ArchiveBtn()
-            }
-            .contextMenu(menuItems: {
-                RefreshBtn()
-                SiteInfoBtn()
-                Divider()
-                ArchiveBtn()
-                DeleteBtn()
-            })
+#elseif os(macOS)
+            SiteItemTile()
+#endif
+        }
+        .swipeActions(edge: .leading) {
+            SiteInfoBtn()
+        }
+        .swipeActions(edge: .trailing) {
+            DeleteBtn()
+            ArchiveBtn()
+        }
+        .contextMenu(menuItems: {
+            RefreshBtn()
+            SiteInfoBtn()
+            Divider()
+            ArchiveBtn()
+            DeleteBtn()
+        })
     }
     
     @ViewBuilder

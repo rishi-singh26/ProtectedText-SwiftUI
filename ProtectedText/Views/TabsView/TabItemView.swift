@@ -10,23 +10,40 @@ import SwiftUI
 struct TabItemView: View {
     @EnvironmentObject private var sitesManager: SitesManager
     @EnvironmentObject private var tabsViewModel: TabsViewModel
+    @EnvironmentObject private var appController: AppController
     
     var tab: String
     var index: Int
     
     var body: some View {
-        Text(tab.getTabTitle())
-            .lineLimit(2)
-            .swipeActions(edge: .trailing) {
-                DeleteBtnBuilder()
+        Group {
+#if os(iOS)
+            Button {
+                sitesManager.selectedTabIndex = index
+                appController.path.append(tab)
+            } label: {
+                TabTileBuilder()
             }
-            .contextMenu(menuItems: {
-                DeleteBtnBuilder()
-            })
+#elseif os(macOS)
+            TabTileBuilder()
+#endif
+        }
+        .swipeActions(edge: .trailing) {
+            DeleteBtnBuilder()
+        }
+        .contextMenu(menuItems: {
+            DeleteBtnBuilder()
+        })
     }
     
     @ViewBuilder
-    func DeleteBtnBuilder() -> some View {
+    private func TabTileBuilder() -> some View {
+        Text(tab.getTabTitle())
+            .lineLimit(2)
+    }
+    
+    @ViewBuilder
+    private func DeleteBtnBuilder() -> some View {
         Button(role: .destructive) {
             tabsViewModel.showTabDeletionConfirmation(index: index)
         } label: {

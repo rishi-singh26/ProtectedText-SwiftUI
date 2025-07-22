@@ -13,12 +13,14 @@ struct TabDetailView: View {
     
     var body: some View {
         Group {
-            if let selectedSite = sitesManager.selectedSite, let selectedTabIndex = sitesManager.selectedTabIndex {
+            if let selectedSite = sitesManager.selectedSite, let selectedTabIndex = sitesManager.selectedTabIndex, sitesManager.siteTabsData[selectedSite.id] != nil {
                 TabEditorView(site: selectedSite, tabIndex: selectedTabIndex)
             } else {
-                Text("")
+                Text("No Data")
             }
-        }.toolbar {
+        }
+#if os(macOS)
+        .toolbar {
             ToolbarItemGroup(placement: .automatic) {
                 Button {
                     tabsViewModel.showFileExporter = true
@@ -39,6 +41,7 @@ struct TabDetailView: View {
                 }
             }
         }
+#endif
     }
 }
 
@@ -53,7 +56,7 @@ struct TabEditorView: View {
     
     var tabContentBinding: Binding<String> {
         Binding {
-            sitesManager.siteTabsData[site.id]!.item(at: tabIndex) ?? ""
+            sitesManager.siteTabsData[site.id]?.item(at: tabIndex) ?? ""
         } set: { newVal in
             var tabsData = sitesManager.siteTabsData
             tabsData[site.id]![tabIndex] = newVal
@@ -72,22 +75,22 @@ struct TabEditorView: View {
 #elseif os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        if sitesManager.saveTracker == site.id {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
-                        if isFocused {
-                            Button {
-                                isFocused = false
-                                Task {
-                                    handleSiteSaveResult(result: await sitesManager.saveSite(site))
-                                }
-                            } label: {
-                                Text("Done")
-                                    .bold()
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if sitesManager.saveTracker == site.id {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    if isFocused {
+                        Button {
+                            isFocused = false
+                            Task {
+                                handleSiteSaveResult(result: await sitesManager.saveSite(site))
                             }
+                        } label: {
+                            Text("Done")
+                                .bold()
                         }
+                    }
                 }
             }
             .toolbar {
@@ -110,7 +113,7 @@ struct TabEditorView: View {
                 }
             }
             .confirmationDialog(
-                "Are you sure you want to delete this scribble?",
+                "Are you sure you want to delete this tab?",
                 isPresented: $tabsViewModel.showTabDeletionConfirmation2,
                 titleVisibility: .visible
             ) {

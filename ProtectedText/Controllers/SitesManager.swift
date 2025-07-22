@@ -19,7 +19,7 @@ class SitesManager: ObservableObject {
     @Published var loadTracker: [String: Bool] = [:] // siteURL: Bool
     @Published var saveTracker: String = "" // siteURL
     @Published var errorTracker: [String: String] = [:] // siteURL: Error message
-    @Published var siteTabsData: [String: [String]] = [:] // siteURL: tab data
+    @Published var siteTabsData: [String: [String]] = [:] // siteURL: tabs data array
     
     // Passwords retrived from keystore
     @Published var passwords: [String: String] = [:]
@@ -27,10 +27,11 @@ class SitesManager: ObservableObject {
     // For showing error or success message to user
     @Published var alertMessage: String?
     
-    // selected site will only be used for macOS app
     @Published var selectedSite: Site? = nil {
         willSet {
-            selectedTabIndex = nil // reset tab selection on site selection change
+            // reset tab selection on site selection change
+            selectedTabIndex = nil
+            // Refresh the site data on selection.
 //            if let site = newValue {
 //                Task {
 //                    await refreshTabs(for: site)

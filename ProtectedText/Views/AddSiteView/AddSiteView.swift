@@ -89,7 +89,7 @@ struct AddSiteView: View {
                             .font(.title2)
                             .foregroundColor(.yellow)
                             .background(RoundedRectangle(cornerRadius: 5).fill(.white))
-                        Text("Password ones set can be reset only if the original password is known.\nIf you forget your password, you will loose access to your site.")
+                        Text("If you forget your password, you will loose access to your site. There no password recovery mechanism in place because data is encrypted with your password.")
                     }
                     .listRowBackground(Color.yellow.opacity(0.2))
                 }
@@ -195,7 +195,7 @@ struct AddSiteView: View {
                                 .foregroundColor(.yellow)
                                 .background(RoundedRectangle(cornerRadius: 5).fill(.white))
                             Spacer()
-                            Text("Password ones set can be reset only if the original password is known. If you forget your password, you will loose access to your site.")
+                            Text("If you forget your password, you will loose access to your site. There no password recovery mechanism in place because data is encrypted with your password.")
                         }
                         .padding(6)
                     }
@@ -279,7 +279,11 @@ struct AddSiteView: View {
                 )
                 
                 // Create site by adding some content
-                let creationContent = "This text has been added so you can take ownership of this newly created site, you can remove this text now."
+                let creationContent = """
+Enter title here
+———————————————
+Enter content here
+"""
                 // Save the data into www.protectedtext.com server
                 let (result, eContent) = try await newSite.save(with: controller.password, and: [creationContent])
                 if (result.status.lowercased() == "success") {

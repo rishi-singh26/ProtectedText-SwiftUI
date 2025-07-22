@@ -30,44 +30,42 @@ struct SitesView: View {
     }
     
     var body: some View {
-        Group {
-            SitesList()
+        SitesList()
 #if os(iOS)
-                .toolbar(content: IOSToolbarBuilder)
+            .toolbar(content: IOSToolbarBuilder)
 #elseif os(macOS)
-                .toolbar(content: MacOSToolbarBuilder)
+            .toolbar(content: MacOSToolbarBuilder)
 #endif
-        }
-        .navigationTitle("Sites")
-        .searchable(text: $sitesViewModel.searchText, isPresented: $searchFieldPresented, placement: .sidebar)
-        .listStyle(.sidebar)
-        .refreshable {
-            Task {
-                await sitesManager.fetchDataForAllSites()
+            .navigationTitle("Sites")
+            .searchable(text: $sitesViewModel.searchText, isPresented: $searchFieldPresented, placement: .sidebar)
+            .listStyle(.sidebar)
+            .refreshable {
+                Task {
+                    await sitesManager.fetchDataForAllSites()
+                }
             }
-        }
-        .sheet(isPresented: $sitesViewModel.showNewSiteSheet) {
-            AddSiteView()
-        }
-        .sheet(isPresented: $sitesViewModel.showSiteInfoSheet) {
-            SiteInfoView(site: sitesViewModel.selectedSiteForInfoSheet!)
-        }
-        .sheet(isPresented: $sitesViewModel.showEditSiteSheet) {
-            EditSiteView(site: sitesViewModel.selectedSiteForEditSheet!)
-        }
-        .sheet(isPresented: $sitesViewModel.showSettingsSheet) {
-//            SettingsView()
-        }
-        .alert("Alert!", isPresented: $sitesViewModel.showDeleteSiteAlert) {
-            Button("Cancel", role: .cancel) {
+            .sheet(isPresented: $sitesViewModel.showNewSiteSheet) {
+                AddSiteView()
             }
-            Button("Delete", role: .destructive) {
-                guard let siteForDeletion = sitesViewModel.selectedSiteForDeletion else { return }
-                Task { await sitesManager.deleteSite(siteForDeletion) }
+            .sheet(isPresented: $sitesViewModel.showSiteInfoSheet) {
+                SiteInfoView(site: sitesViewModel.selectedSiteForInfoSheet!)
             }
-        } message: {
-            Text("Are you sure you want to delete this site?\nThis action is irreversible. Ones deleted, the text in this site can not be recovered.")
-        }
+            .sheet(isPresented: $sitesViewModel.showEditSiteSheet) {
+                EditSiteView(site: sitesViewModel.selectedSiteForEditSheet!)
+            }
+            .sheet(isPresented: $sitesViewModel.showSettingsSheet) {
+                //            SettingsView()
+            }
+            .alert("Alert!", isPresented: $sitesViewModel.showDeleteSiteAlert) {
+                Button("Cancel", role: .cancel) {
+                }
+                Button("Delete", role: .destructive) {
+                    guard let siteForDeletion = sitesViewModel.selectedSiteForDeletion else { return }
+                    Task { await sitesManager.deleteSite(siteForDeletion) }
+                }
+            } message: {
+                Text("Are you sure you want to delete this site?\nThis action is irreversible. Ones deleted, the text in this site can not be recovered.")
+            }
     }
     
     @ViewBuilder
@@ -79,24 +77,27 @@ struct SitesView: View {
                 sitesManager.selectedSite = newVal
             }
         }
-
-        Group {
+        
 #if os(iOS)
+        if DeviceType.isIphone {
             List(filteredSites) { site in
-                NavigationLink {
-                    TabsListView(site: site)
-                } label: {
-                    SiteItemView(site: site)
-                }
+                SiteItemView(site: site)
             }
-#elseif os(macOS)
+            .listStyle(.sidebar)
+        } else {
             List(filteredSites, selection: selectionBinding) { site in
                 NavigationLink(value: site) {
                     SiteItemView(site: site)
                 }
             }
-#endif
         }
+#elseif os(macOS)
+        List(filteredSites, selection: selectionBinding) { site in
+            NavigationLink(value: site) {
+                SiteItemView(site: site)
+            }
+        }
+#endif
     }
     
 #if os(iOS)

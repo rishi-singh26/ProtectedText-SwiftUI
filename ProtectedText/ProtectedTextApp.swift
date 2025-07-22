@@ -14,6 +14,7 @@ struct ProtectedTextApp: App {
     @StateObject private var sitesManager: SitesManager
     @StateObject private var sitesViewModel = SitesViewModel()
     @StateObject private var tabsViewModel = TabsViewModel()
+    @StateObject private var appController = AppController()
     
     init() {
         let container: ModelContainer
@@ -35,6 +36,7 @@ struct ProtectedTextApp: App {
                 .environmentObject(sitesManager)
                 .environmentObject(sitesViewModel)
                 .environmentObject(tabsViewModel)
+                .environmentObject(appController)
         }
         .modelContainer(sharedModelContainer)
         .commands {
