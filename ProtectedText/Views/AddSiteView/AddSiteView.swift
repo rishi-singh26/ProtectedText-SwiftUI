@@ -278,18 +278,13 @@ struct AddSiteView: View {
                     siteContent: siteData.eContent,
                 )
                 
-                // Create site by adding some content
-                let creationContent = """
-Enter title here
-———————————————
-Enter content here
-"""
+                // Create site by adding some new tab content
                 // Save the data into www.protectedtext.com server
-                let (result, eContent) = try await newSite.save(with: controller.password, and: [creationContent])
+                let (result, eContent) = try await newSite.save(with: controller.password, and: [KNewTabContent])
                 if (result.status.lowercased() == "success") {
                     newSite.siteContent = eContent
                     // save site to swiftdata
-                    try sitesManager.createSite(newSite, with: [creationContent])
+                    try sitesManager.createSite(newSite, with: [KNewTabContent])
                     // save password to keychain
                     if controller.shouldSavePass {
                         var updatedPasswords = sitesManager.passwords

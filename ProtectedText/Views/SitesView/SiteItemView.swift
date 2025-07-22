@@ -19,11 +19,13 @@ struct SiteItemView: View {
 #if os(iOS)
             if DeviceType.isIphone {
                 Button {
-                    sitesManager.selectedSite = site
-                    if DeviceType.isIphone {
-                        appController.path.append(site)
-                    } else {
-                        appController.path = NavigationPath()
+                    let status: Bool = sitesManager.updateSelectedSite(selected: site)
+                    if status {
+                        if DeviceType.isIphone {
+                            appController.path.append(site)
+                        } else {
+                            appController.path = NavigationPath()
+                        }
                     }
                 } label: {
                     SiteItemTile()
@@ -43,11 +45,11 @@ struct SiteItemView: View {
             ArchiveBtn()
         }
         .contextMenu(menuItems: {
-            RefreshBtn()
-            SiteInfoBtn()
+            RefreshBtn(addTint: false)
+            SiteInfoBtn(addTint: false)
             Divider()
-            ArchiveBtn()
-            DeleteBtn()
+            ArchiveBtn(addTint: false)
+            DeleteBtn(addTint: false)
         })
     }
     
@@ -70,33 +72,37 @@ struct SiteItemView: View {
                 } else if let count = sitesManager.siteTabsData[site.id]?.count  {
                     Text("\(count)")
                         .foregroundColor(.secondary)
+                } else if sitesManager.passwords[site.id] == nil {
+                    Image(systemName: "lock")
+                        .controlSize(.small)
+                        .foregroundStyle(.gray)
                 }
             }
         }
     }
     
     @ViewBuilder
-    func SiteInfoBtn() -> some View {
+    func SiteInfoBtn(addTint: Bool = true) -> some View {
         Button {
             sitesViewModel.showSiteInfoSheet(site: site)
         } label: {
             Label("Site Info", systemImage: "info.square")
         }
-        .tint(.yellow)
+        .tint(addTint ? .yellow : nil)
     }
     
     @ViewBuilder
-    func DeleteBtn() -> some View {
+    func DeleteBtn(addTint: Bool = true) -> some View {
         Button(role: .destructive) {
             sitesViewModel.deleteSite(site: site)
         } label: {
             Label("Delete", systemImage: "trash")
         }
-        .tint(.red)
+        .tint(addTint ? .red : nil)
     }
     
     @ViewBuilder
-    func ArchiveBtn() -> some View {
+    func ArchiveBtn(addTint: Bool = true) -> some View {
         Button {
             Task {
                 sitesManager.toggleArchiveStatus(for: site)
@@ -104,11 +110,11 @@ struct SiteItemView: View {
         } label: {
             Label("Archive", systemImage: "archivebox")
         }
-        .tint(.indigo)
+        .tint(addTint ? .indigo : nil)
     }
     
     @ViewBuilder
-    func RefreshBtn() -> some View {
+    func RefreshBtn(addTint: Bool = true) -> some View {
         Button {
             Task {
                 await sitesManager.refreshTabs(for: site)
@@ -116,6 +122,7 @@ struct SiteItemView: View {
         } label: {
             Label("Refresh", systemImage: "arrow.clockwise.circle")
         }
+        .tint(addTint ? .blue : nil)
     }
 }
 

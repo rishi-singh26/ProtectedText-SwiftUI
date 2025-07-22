@@ -31,11 +31,14 @@ struct ContentView: View {
         } message: {
             Text(sitesManager.alertMessage ?? "")
         }
+        .sheet(isPresented: $sitesManager.showPasswordInput) {
+            UnlockSiteView()
+        }
     }
     
 #if os(macOS)
     @ViewBuilder
-    func MacOSViewBuilder() -> some View {
+    private func MacOSViewBuilder() -> some View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 SitesView()

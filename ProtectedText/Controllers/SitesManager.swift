@@ -22,11 +22,20 @@ class SitesManager: ObservableObject {
     @Published var siteTabsData: [String: [String]] = [:] // siteURL: tabs data array
     
     // Passwords retrived from keystore
-    @Published var passwords: [String: String] = [:]
+    @Published var passwords: [String: String] = [:] // siteURL : password
     
     // For showing error or success message to user
     @Published var alertMessage: String?
     
+    // For getting password input from user for sites whose password is not saved to keychain
+    @Published var showPasswordInput: Bool = false
+    
+    /// **`suspendedSite`** will be used to store the site for which the password need to be entered.
+    /// Ones user has entered the password, the password will be validated.
+    /// On successful validation the password will be added to the **`passwords`** dictionary
+    /// so user does not have to enter it again in the current app session.
+    /// **`selectedSite`** will be set to **`suspendedSite`** and **`suspendedSite`** will be cleared
+    private var suspendedSiteId: String? = nil
     @Published var selectedSite: Site? = nil {
         willSet {
             // reset tab selection on site selection change
@@ -79,7 +88,7 @@ class SitesManager: ObservableObject {
                 self.clearAlert()
                 
                 /// Fetch tabs for each site
-                 await self.fetchDataForAllSites()
+                await self.fetchDataForAllSites()
             } catch {
                 self.showAlert(with: error.localizedDescription)
                 print("Error fetching addresses: \(error.localizedDescription)")
@@ -164,10 +173,10 @@ class SitesManager: ObservableObject {
         var siteTabsDataCopy = siteTabsData
         
         // Early exit if data not available
-        guard var tabs = siteTabsDataCopy[site.id] else { return (false, "Site tabs not available. Something wend wrong!") }
+        guard var tabs = siteTabsDataCopy[site.id] else { return (false, KNoTabsError) }
         
         // Add tab to copyied data
-        tabs.append("")
+        tabs.append(KNewTabContent)
         siteTabsDataCopy[site.id] = tabs
         
         // Save updated tabs to server
@@ -181,14 +190,14 @@ class SitesManager: ObservableObject {
     
     func deleteSelectedTab() async -> (Bool, String) {
         // Early exit if no selected site or tab index
-        guard let site = selectedSite else { return (false, "No site selected, please select a site.") }
+        guard let site = selectedSite else { return (false, KNoSiteSelectedErr) }
         guard let selectedTabIndex = selectedTabIndex else { return (false, "Tab not selected. Please select a tab.") }
         return await deleteTab(at: selectedTabIndex, from: site)
     }
     
     func deleteTabFromSelectedSite(at index: Int) async -> (Bool, String) {
         // Early exit if no selected site or tab index
-        guard let site = selectedSite else { return (false, "No site selected, please select a site.") }
+        guard let site = selectedSite else { return (false, KNoSiteSelectedErr) }
         return await deleteTab(at: index, from: site)
     }
     
@@ -197,7 +206,7 @@ class SitesManager: ObservableObject {
         var siteTabsDataCopy = siteTabsData
         
         // Early exit if data not available
-        guard var tabs = siteTabsDataCopy[site.id] else { return (false, "Site tabs not available. Something wend wrong!") }
+        guard var tabs = siteTabsDataCopy[site.id] else { return (false, KNoTabsError) }
         guard tabs.isValidIndex(index) else { return (false, "Selected tab not available. Something went wrong!") }
         
         // Remove tab from copyied data
@@ -220,12 +229,12 @@ class SitesManager: ObservableObject {
     }
     
     func saveSelectedSite() async -> (Bool, String) {
-        guard let selectedSite = selectedSite else { return (false, "No site selected, please select a site") }
+        guard let selectedSite = selectedSite else { return (false, KNoSiteSelectedErr) }
         return await saveSite(selectedSite)
     }
     
     func saveSite(_ site: Site) async -> (Bool, String) {
-        guard let siteTabs = siteTabsData[site.id] else { return (false, "Site tabs not available. Something wend wrong!") }
+        guard let siteTabs = siteTabsData[site.id] else { return (false, KNoTabsError) }
         return await saveSite(site, with: siteTabs)
     }
     
@@ -284,6 +293,39 @@ class SitesManager: ObservableObject {
     
     private func saveChanges() throws {
         try modelContext.save()
+    }
+    
+    @discardableResult
+    func updateSelectedSite(selected site: Site?) -> Bool {
+        if let site = site {
+            if passwords[site.id] != nil {
+                self.selectedSite = site
+                return true
+            } else {
+                suspendedSiteId = site.id
+                showPasswordInput = true
+                return false
+            }
+        } else {
+            self.selectedSite = site
+            return true
+        }
+    }
+    
+    func validateAndUpdatePassword(password: String) -> Bool {
+        guard !password.isEmpty else { return false }
+        guard let siteid = suspendedSiteId else { return false }
+        guard let site = sites.first(where: { $0.id == siteid }) else { return false }
+        do {
+            let tabs: [String] = try site.decrypt(with: password)
+            siteTabsData[site.id] = tabs
+            passwords[site.id] = password
+            selectedSite = site
+            suspendedSiteId = nil
+            return true
+        } catch {
+            return false
+        }
     }
     
     /// Clears any error message

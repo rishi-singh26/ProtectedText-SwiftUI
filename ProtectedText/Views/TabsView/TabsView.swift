@@ -101,7 +101,11 @@ private struct TabsListView: View {
     var body: some View {
         TabsList()
             .listStyle(.plain)
+#if os(iOS)
             .searchable(text: $tabsViewModel.searchText, placement: DeviceType.isIphone ? .navigationBarDrawer(displayMode: .always) : .automatic)
+#elseif os(macOS)
+            .searchable(text: $tabsViewModel.searchText)
+#endif
             .navigationTitle(site.id)
             .refreshable {
                 Task { await sitesManager.refreshTabs(for: site) }

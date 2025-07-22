@@ -74,7 +74,7 @@ struct SitesView: View {
             sitesManager.selectedSite
         } set: { newVal in
             DispatchQueue.main.async {
-                sitesManager.selectedSite = newVal
+                sitesManager.updateSelectedSite(selected: newVal)
             }
         }
         
