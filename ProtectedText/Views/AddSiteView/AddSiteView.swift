@@ -11,6 +11,8 @@ struct AddSiteView: View {
     @Environment(\.dismiss) var dismiss
     @StateObject var controller = AddSiteViewModel()
     @EnvironmentObject private var sitesManager: SitesManager
+    
+    @FocusState private var siteUrlFocus: Bool
 
     var body: some View {
         Group {
@@ -27,6 +29,9 @@ struct AddSiteView: View {
         } message: {
             Text(controller.errorText ?? "")
         }
+        .onAppear {
+            siteUrlFocus = true
+        }
     }
     
 #if os(iOS)
@@ -37,6 +42,7 @@ struct AddSiteView: View {
                 Section {
                     TextField("Site URL (/yoursite)", text: $controller.siteURL)
                         .textInputAutocapitalization(.never)
+                        .focused($siteUrlFocus)
                         .submitLabel(.go)
                         .onSubmit(submitSite)
                         .onChange(of: controller.siteURL, { _, _ in
@@ -60,51 +66,54 @@ struct AddSiteView: View {
                         Text("This site (**\(controller.siteURL)**) is already occupied.\n\nIf this is your site enter the password used to encrypt this site, or you can try using different site.")
                         PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .plain)
                         ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
-                        HStack {
-                            Spacer()
-                            Button("Add Site", action: handleAddSite)
-                                .disabled(controller.password.isEmpty)
-                                .buttonStyle(.borderedProminent)
-                        }
                     }
+                    .transition(.blurReplace.combined(with: .push(from: .bottom)))
+                    .animation(.easeInOut(duration: 0.3), value: controller.siteData != nil)
                 }
                 
                 if let siteData = controller.siteData, siteData.isNew {
-                    Section {
-                        Text("**Great! This site does not exist**.\n\nIn order to create this site, enter a password.\nIf you forget this password, you will loose access to this site.")
-                        PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .plain)
-                        PasswordField(password: $controller.repeatPassword, placeholder: "Repeat Password", textFieldStyle: .plain)
-                        ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
-                        HStack {
+                    Group {
+                        Section {
+                            Text("**Great! This site does not exist**.\nIn order to create this site, enter a password. **If you forget this password, you will loose access to this site.**")
+                            PasswordField(password: $controller.password, placeholder: "Password", textFieldStyle: .plain)
+                            PasswordField(password: $controller.repeatPassword, placeholder: "Repeat Password", textFieldStyle: .plain)
+                            ShouldSavePasswordToggle(shouldSave: $controller.shouldSavePass)
                             Button("Generate Password", action: controller.generateRandomPass)
-                            Spacer()
-                            Button("Create Site", action: handleCreateSite)
-                                .disabled(controller.disableCreateSiteBtn)
-                                .buttonStyle(.borderedProminent)
                         }
+                        
+                        HStack(alignment: .top) {
+                            Image(systemName: "info.square.fill")
+                                .font(.title2)
+                                .foregroundColor(.yellow)
+                                .background(RoundedRectangle(cornerRadius: 5).fill(.white))
+                            Text("If you forget your password, you will loose access to your site. There no password recovery mechanism in place because data is encrypted with your password.")
+                        }
+                        .listRowBackground(Color.yellow.opacity(0.2))
                     }
-                    
-                    HStack(alignment: .top) {
-                        Image(systemName: "info.square.fill")
-                            .font(.title2)
-                            .foregroundColor(.yellow)
-                            .background(RoundedRectangle(cornerRadius: 5).fill(.white))
-                        Text("If you forget your password, you will loose access to your site. There no password recovery mechanism in place because data is encrypted with your password.")
-                    }
-                    .listRowBackground(Color.yellow.opacity(0.2))
+                    .transition(.blurReplace.combined(with: .push(from: .bottom)))
+                    .animation(.easeInOut(duration: 0.3), value: controller.siteData != nil)
                 }
             }
             .navigationTitle("New Site")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
-                if controller.isLoading {
-                    ToolbarItem(placement: .topBarTrailing) {
+                
+                ToolbarItemGroup(placement: .confirmationAction) {
+                    if controller.isLoading {
                         ProgressView()
                             .controlSize(.regular)
+                    }
+                    if controller.siteData?.isNew == true {
+                        Button("Create", action: handleCreateSite)
+                            .disabled(controller.disableCreateSiteBtn)
+                    } else {
+                        Button("Add", action: handleAddSite)
+                            .disabled(controller.disableAddSiteBtn)
                     }
                 }
             }
@@ -136,6 +145,7 @@ struct AddSiteView: View {
                         HStack {
                             TextField("/yoursite", text: $controller.siteURL)
                                 .textFieldStyle(.roundedBorder)
+                                .focused($siteUrlFocus)
                                 .submitLabel(.go)
                                 .onChange(of: controller.siteURL, { _, _ in
                                     controller.resetSiteData()
@@ -239,12 +249,11 @@ struct AddSiteView: View {
             try sitesManager.createSite(newSite, with: tabs)
             // save password to keychain
             if controller.shouldSavePass {
-                var updatedPasswords = sitesManager.passwords
-                updatedPasswords[controller.siteURL] = controller.password
-                try KeychainManager.saveKeychainData(updatedPasswords)
-                sitesManager.passwords = updatedPasswords
+                sitesManager.addNewPassword(controller.password, for: controller.siteURL)
+                dismiss()
+            } else {
+                controller.errorText = "Site has been created. Something went wrong while saving password! Please copy the password"
             }
-            dismiss()
         } catch {
             controller.errorText = error.localizedDescription
         }
@@ -287,12 +296,11 @@ struct AddSiteView: View {
                     try sitesManager.createSite(newSite, with: [KNewTabContent])
                     // save password to keychain
                     if controller.shouldSavePass {
-                        var updatedPasswords = sitesManager.passwords
-                        updatedPasswords[controller.siteURL] = controller.password
-                        try KeychainManager.saveKeychainData(updatedPasswords)
-                        sitesManager.passwords = updatedPasswords
+                        sitesManager.addNewPassword(controller.password, for: controller.siteURL)
+                        dismiss()
+                    } else {
+                        controller.errorText = "Site has been created. Something went wrong while saving password! Please copy the password"
                     }
-                    dismiss()
                 }
                 else if result.message != nil { // special messages from server
                     controller.errorText = result.message

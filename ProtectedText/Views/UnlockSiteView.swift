@@ -104,7 +104,6 @@ struct UnlockSiteView: View {
     }
     
     private func submit() {
-        print(password)
         let status = sitesManager.validateAndUpdatePassword(password: password)
         if status {
             dismiss()

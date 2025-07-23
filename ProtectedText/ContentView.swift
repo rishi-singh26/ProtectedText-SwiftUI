@@ -132,7 +132,6 @@ private struct NewSiteBtn: View {
                 .padding(.vertical, 7)
             })
             .buttonStyle(.plain)
-            .keyboardShortcut(.init("n", modifiers: [.command, .shift]))
             
             Spacer()
         }

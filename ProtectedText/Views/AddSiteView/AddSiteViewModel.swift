@@ -19,8 +19,12 @@ class AddSiteViewModel: ObservableObject {
     @Published var repeatPassword: String = ""
     @Published var shouldSavePass: Bool = true
     
+    var disableAddSiteBtn: Bool {
+        siteData == nil || password.isEmpty
+    }
+    
     var disableCreateSiteBtn: Bool {
-        password.isEmpty || password != repeatPassword || password.count < 6
+        siteData == nil || password.isEmpty || password != repeatPassword || password.count < 6
     }
     
     // Error handlers
@@ -38,7 +42,9 @@ class AddSiteViewModel: ObservableObject {
             siteURL = "/" + trimmedInput
             
             let data = try await APIManager.getData(endPoint: siteURL)
-            siteData = data
+            withAnimation {
+                siteData = data
+            }
             resetPasswords()
         } catch {
             throw error

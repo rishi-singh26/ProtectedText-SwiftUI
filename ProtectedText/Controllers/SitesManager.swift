@@ -20,6 +20,7 @@ class SitesManager: ObservableObject {
     @Published var saveTracker: String = "" // siteURL
     @Published var errorTracker: [String: String] = [:] // siteURL: Error message
     @Published var siteTabsData: [String: [String]] = [:] // siteURL: tabs data array
+    @Published var changeTracker: Set<String> = [] // set of site ids with change
     
     // Passwords retrived from keystore
     @Published var passwords: [String: String] = [:] // siteURL : password
@@ -70,29 +71,31 @@ class SitesManager: ObservableObject {
     
     func fetchSites() {
         Task {
-            do {
-                // Fetch active sites
-                let descriptor = FetchDescriptor<Site>(
-                    predicate: #Predicate<Site> { !$0.archived },
-                    sortBy: [SortDescriptor(\Site.createdAt, order: .reverse)]
-                )
-                sites = try modelContext.fetch(descriptor)
-                
-                // Fetch archived sites
-                let archivedDescriptor = FetchDescriptor<Site>(
-                    predicate: #Predicate<Site> { $0.archived },
-                    sortBy: [SortDescriptor(\Site.createdAt, order: .reverse)]
-                )
-                archivedSites = try modelContext.fetch(archivedDescriptor)
-                
-                self.clearAlert()
-                
-                /// Fetch tabs for each site
-                await self.fetchDataForAllSites()
-            } catch {
-                self.showAlert(with: error.localizedDescription)
-                print("Error fetching addresses: \(error.localizedDescription)")
-            }
+            fetchSitesFromSwiftData()
+            /// Fetch tabs for each site
+            await self.fetchDataForAllSites()
+        }
+    }
+    
+    private func fetchSitesFromSwiftData() {
+        do {
+            // Fetch active sites
+            let descriptor = FetchDescriptor<Site>(
+                predicate: #Predicate<Site> { !$0.archived },
+                sortBy: [SortDescriptor(\Site.createdAt, order: .reverse)]
+            )
+            sites = try modelContext.fetch(descriptor)
+            
+            // Fetch archived sites
+            let archivedDescriptor = FetchDescriptor<Site>(
+                predicate: #Predicate<Site> { $0.archived },
+                sortBy: [SortDescriptor(\Site.createdAt, order: .reverse)]
+            )
+            archivedSites = try modelContext.fetch(archivedDescriptor)
+            
+            self.clearAlert()
+        } catch {
+            self.showAlert(with: error.localizedDescription)
         }
     }
     
@@ -137,18 +140,34 @@ class SitesManager: ObservableObject {
         try saveChanges()
     }
     
+    func removeSite(_ site: Site) async {
+        do {
+            modelContext.delete(site)
+            // remove the password for removed site
+            removePassword(for: site.id)
+            try saveChanges()
+            // Fetch updated data
+            fetchSitesFromSwiftData()
+        } catch {
+            alertMessage = error.localizedDescription
+        }
+    }
+    
     func deleteSite(_ site: Site) async {
         do {
             guard let password = passwords[site.id] else { return }
             let result = try await site.delete(with: password)
             if (result.status.lowercased() == "success") {
                 modelContext.delete(site)
+                // remove the password for deleted site
+                removePassword(for: site.id)
                 fetchSites()
                 siteTabsData.removeValue(forKey: site.id)
-                passwords.removeValue(forKey: site.id)
                 errorTracker.removeValue(forKey: site.id)
                 loadTracker.removeValue(forKey: site.id)
                 try saveChanges()
+                // Fetch updated data
+                fetchSitesFromSwiftData()
             } else {
                 alertMessage = "Failed to delete site.\nIf this problem cotinues, please try deleting this site from [protectedtext.com\(site.id)](https://www.protectedtext.com\(site.id)"
             }
@@ -159,7 +178,12 @@ class SitesManager: ObservableObject {
     
     func toggleArchiveStatus(for site: Site) {
         do {
-            site.archived = !site.archived
+            let newArchived = !site.archived
+            site.archived = newArchived
+            // remove the password for archived site
+            if newArchived {
+                removePassword(for: site.id)
+            }
             try saveChanges()
             fetchSites()
         } catch {
@@ -284,7 +308,6 @@ class SitesManager: ObservableObject {
             let tabs: [String] = try site.decrypt(with: password)
             siteTabsData[site.id] = tabs
         } catch {
-            print(error.localizedDescription)
             // Dont show error here, this function runs at app launch
             // If decryption failed, we will attempt decryption again when user selects to view this site
             // show("Error!", with: error.localizedDescription)
@@ -298,6 +321,10 @@ class SitesManager: ObservableObject {
     @discardableResult
     func updateSelectedSite(selected site: Site?) -> Bool {
         if let site = site {
+            if changeTracker.contains(where: { $0 == site.id }) {
+                alertMessage = "Currently selected site has changes! Please save your changes before switching to another site."
+                return false
+            }
             if passwords[site.id] != nil {
                 self.selectedSite = site
                 return true
@@ -322,6 +349,32 @@ class SitesManager: ObservableObject {
             passwords[site.id] = password
             selectedSite = site
             suspendedSiteId = nil
+            return true
+        } catch {
+            return false
+        }
+    }
+    
+    @discardableResult
+    func addNewPassword(_ password: String, for url: String) -> Bool {
+        do {
+            var updatedPasswords = passwords
+            updatedPasswords[url] = password
+            try KeychainManager.saveKeychainData(updatedPasswords)
+            passwords = updatedPasswords
+            return true
+        } catch {
+            return false
+        }
+    }
+    
+    @discardableResult
+    func removePassword(for url: String) -> Bool {
+        do {
+            var updatedPasswords = passwords
+            updatedPasswords.removeValue(forKey: url)
+            try KeychainManager.saveKeychainData(updatedPasswords)
+            passwords = updatedPasswords
             return true
         } catch {
             return false

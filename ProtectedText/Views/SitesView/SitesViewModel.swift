@@ -19,6 +19,20 @@ class SitesViewModel: ObservableObject {
         selectedSiteForDeletion = site
         showDeleteSiteAlert = true
     }
+    
+    @Published var showRemoveSiteAlert = false
+    @Published var selectedSiteForRemoval: Site?
+    func removeSite(site: Site) {
+        selectedSiteForRemoval = site
+        showRemoveSiteAlert = true
+    }
+    
+    @Published var showArchiveSiteAlert = false
+    @Published var selectedSiteForArchival: Site?
+    func archiveSite(site: Site) {
+        selectedSiteForArchival = site
+        showArchiveSiteAlert = true
+    }
 
     @Published var errorAlertMessage = ""
     

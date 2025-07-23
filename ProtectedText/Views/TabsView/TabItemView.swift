@@ -24,6 +24,7 @@ struct TabItemView: View {
             } label: {
                 TabTileBuilder()
             }
+            .buttonStyle(.plain)
 #elseif os(macOS)
             TabTileBuilder()
 #endif

@@ -40,8 +40,12 @@ struct ProtectedTextApp: App {
         }
         .modelContainer(sharedModelContainer)
         .commands {
-            CommandGroup(after: .saveItem) {
-                Button("Save") {
+            CommandGroup(replacing: .newItem) {
+                Button("New Site", action: sitesViewModel.openNewSiteSheet)
+                .keyboardShortcut("n", modifiers: [.command])
+            }
+            CommandGroup(replacing: .saveItem) {
+                Button("Save Selected Site") {
                     Task {
                         let (status, message) = await sitesManager.saveSelectedSite()
                         if !status {
@@ -53,7 +57,20 @@ struct ProtectedTextApp: App {
                         }
                     }
                 }
+                .disabled(sitesManager.selectedSite == nil)
                 .keyboardShortcut("s", modifiers: [.command])
+            }
+            CommandGroup(after: .saveItem) {
+                Button("Close Selected Tab") {
+                    sitesManager.selectedTabIndex = nil
+                }
+                .keyboardShortcut("w", modifiers: [.command, .shift])
+            }
+            CommandGroup(after: .saveItem) {
+                Button("Close Selected Site") {
+                    sitesManager.selectedSite = nil
+                }
+                .keyboardShortcut("w", modifiers: [.command])
             }
         }
     }

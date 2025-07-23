@@ -22,20 +22,23 @@ struct TabDetailView: View {
 #if os(macOS)
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
-                Button {
-                    tabsViewModel.showFileExporter = true
+                Menu {
+                    Button {
+                        tabsViewModel.showFileExporter = true
+                    } label: {
+                        Label("Save to file", systemImage: "square.and.arrow.down")
+                    }
+                    .help("Save tab content into a .txt file")
+                    
+                    ShareLink(item: (sitesManager.siteTabsData[sitesManager.selectedSite?.id ?? ""] ?? []).item(at: sitesManager.selectedTabIndex ?? 0) ?? "")
+                        .help("Share tab content")
                 } label: {
-                    Label("Save to file", systemImage: "square.and.arrow.down")
+                    Image(systemName: "ellipsis.circle")
                 }
-                .help("Save tab content into a .txt file")
                 .disabled(sitesManager.selectedSite == nil || sitesManager.selectedTabIndex == nil)
                 
-                ShareLink(item: (sitesManager.siteTabsData[sitesManager.selectedSite?.id ?? ""] ?? []).item(at: sitesManager.selectedTabIndex ?? 0) ?? "")
-                    .help("Share tab content")
-                    .disabled(sitesManager.selectedSite == nil || sitesManager.selectedTabIndex == nil)
-                
                 if let selectedSite = sitesManager.selectedSite, sitesManager.selectedTabIndex != nil {
-                    Text(sitesManager.saveTracker == selectedSite.id ? "Saving..." : "Saved")
+                    Text(sitesManager.saveTracker == selectedSite.id ? "Saving..." : sitesManager.changeTracker.contains(selectedSite.id) ? "Not Saved" : "Saved")
                         .foregroundStyle(.gray)
                         .help("Tab status")
                 }
@@ -61,8 +64,8 @@ struct TabEditorView: View {
             var tabsData = sitesManager.siteTabsData
             tabsData[site.id]![tabIndex] = newVal
             sitesManager.siteTabsData = tabsData
+            sitesManager.changeTracker.insert(site.id)
         }
-
     }
     
     var body: some View {
@@ -75,20 +78,17 @@ struct TabEditorView: View {
 #elseif os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .confirmationAction) {
                     if sitesManager.saveTracker == site.id {
                         ProgressView()
                             .controlSize(.small)
                     }
                     if isFocused {
-                        Button {
+                        Button("Done") {
                             isFocused = false
                             Task {
                                 handleSiteSaveResult(result: await sitesManager.saveSite(site))
                             }
-                        } label: {
-                            Text("Done")
-                                .bold()
                         }
                     }
                 }

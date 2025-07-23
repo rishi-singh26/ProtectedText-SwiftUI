@@ -100,10 +100,11 @@ private struct TabsListView: View {
     
     var body: some View {
         TabsList()
-            .listStyle(.plain)
 #if os(iOS)
+            .listStyle(.insetGrouped)
             .searchable(text: $tabsViewModel.searchText, placement: DeviceType.isIphone ? .navigationBarDrawer(displayMode: .always) : .automatic)
 #elseif os(macOS)
+            .listStyle(.inset)
             .searchable(text: $tabsViewModel.searchText)
 #endif
             .navigationTitle(site.id)

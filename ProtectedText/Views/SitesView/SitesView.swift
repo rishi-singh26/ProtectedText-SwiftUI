@@ -62,9 +62,31 @@ struct SitesView: View {
                 Button("Delete", role: .destructive) {
                     guard let siteForDeletion = sitesViewModel.selectedSiteForDeletion else { return }
                     Task { await sitesManager.deleteSite(siteForDeletion) }
+                    sitesViewModel.selectedSiteForDeletion = nil
                 }
             } message: {
-                Text("Are you sure you want to delete this site?\nThis action is irreversible. Ones deleted, the text in this site can not be recovered.")
+                Text("Are you sure you want to delete this site?\nThis action is irreversible. Ones deleted, the text data in this site can not be recovered.")
+            }
+            .alert("Alert!", isPresented: $sitesViewModel.showRemoveSiteAlert) {
+                Button("Cancel", role: .cancel) {
+                }
+                Button("Remove", role: .destructive) {
+                    guard let siteForRemoval = sitesViewModel.selectedSiteForRemoval else { return }
+                    Task { await sitesManager.removeSite(siteForRemoval) }
+                    sitesViewModel.selectedSiteForRemoval = nil
+                }
+            } message: {
+                Text("Removing a site does not delete it, only removes it from Protected Text application. Password for this site will all so be removed. You can add this site back with the password.\nIf you loose access to the password, you will not be able to access you site!")
+            }
+            .alert("Alert!", isPresented: $sitesViewModel.showArchiveSiteAlert) {
+                Button("Cancel", role: .cancel) {
+                }
+                Button("Archive", role: .destructive) {
+                    guard let siteForArchival = sitesViewModel.selectedSiteForArchival else { return }
+                    sitesManager.toggleArchiveStatus(for: siteForArchival)
+                }
+            } message: {
+                Text("Password for this site will be removed from Protected Text. You can add this site back with the password.\nIf you loose access to the password, you will not be able to access you site!")
             }
     }
     

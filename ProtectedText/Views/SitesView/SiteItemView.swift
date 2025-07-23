@@ -41,14 +41,16 @@ struct SiteItemView: View {
             SiteInfoBtn()
         }
         .swipeActions(edge: .trailing) {
-            DeleteBtn()
             ArchiveBtn()
+            RemoveBtn()
+            DeleteBtn()
         }
         .contextMenu(menuItems: {
             RefreshBtn(addTint: false)
             SiteInfoBtn(addTint: false)
             Divider()
             ArchiveBtn(addTint: false)
+            RemoveBtn(addTint: false)
             DeleteBtn(addTint: false)
         })
     }
@@ -88,6 +90,7 @@ struct SiteItemView: View {
         } label: {
             Label("Site Info", systemImage: "info.square")
         }
+        .help("Show site information")
         .tint(addTint ? .yellow : nil)
     }
     
@@ -98,19 +101,30 @@ struct SiteItemView: View {
         } label: {
             Label("Delete", systemImage: "trash")
         }
+        .help("Delete site permanently")
         .tint(addTint ? .red : nil)
     }
     
     @ViewBuilder
     func ArchiveBtn(addTint: Bool = true) -> some View {
         Button {
-            Task {
-                sitesManager.toggleArchiveStatus(for: site)
-            }
+            sitesViewModel.archiveSite(site: site)
         } label: {
             Label("Archive", systemImage: "archivebox")
         }
+        .help("Move site to Archived section")
         .tint(addTint ? .indigo : nil)
+    }
+    
+    @ViewBuilder
+    func RemoveBtn(addTint: Bool = true) -> some View {
+        Button {
+            sitesViewModel.removeSite(site: site)
+        } label: {
+            Label("Remove", systemImage: "xmark.app")
+        }
+        .help("Remove site from Protected Text")
+        .tint(addTint ? .orange : nil)
     }
     
     @ViewBuilder
@@ -122,6 +136,7 @@ struct SiteItemView: View {
         } label: {
             Label("Refresh", systemImage: "arrow.clockwise.circle")
         }
+        .help("Refresh site")
         .tint(addTint ? .blue : nil)
     }
 }
