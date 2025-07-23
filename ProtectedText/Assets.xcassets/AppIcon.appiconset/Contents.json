@@ -31,61 +31,61 @@
       "size" : "1024x1024"
     },
     {
-      "filename" : "ProtectedText.png",
+      "filename" : "MacOSIcon.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
     },
     {
-      "filename" : "ProtectedText-1 1.png",
+      "filename" : "MacOSIcon-1 1.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
     },
     {
-      "filename" : "ProtectedText-1.png",
+      "filename" : "MacOSIcon-1.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "32x32"
     },
     {
-      "filename" : "ProtectedText-2.png",
+      "filename" : "MacOSIcon-2.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
     },
     {
-      "filename" : "ProtectedText-3.png",
+      "filename" : "MacOSIcon-3.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
     },
     {
-      "filename" : "ProtectedText-4 1.png",
+      "filename" : "MacOSIcon-4 1.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
     },
     {
-      "filename" : "ProtectedText-4.png",
+      "filename" : "MacOSIcon-4.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
     },
     {
-      "filename" : "ProtectedText-5 1.png",
+      "filename" : "MacOSIcon-5 1.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
     },
     {
-      "filename" : "ProtectedText-5.png",
+      "filename" : "MacOSIcon-5.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
     },
     {
-      "filename" : "ProtectedText-6.png",
+      "filename" : "MacOSIcon-6.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"
